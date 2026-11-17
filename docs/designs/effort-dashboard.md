@@ -7,9 +7,10 @@
     concluded it **with findings still open**. The implementation plan is not
     ready to build from: 6 Blockers in Stage 9. The six author decisions are
     listed at the end of `implementation_readiness_report.md`. The reports are
-    `zoom_out_report.md`, `comprehension_report.md`, `critic_report.md`,
+    `comprehension_report.md`, `critic_report.md`,
     `intermediate_zoom_out_report.md` and `implementation_readiness_report.md`,
-    all at the repository root.
+    all at the repository root. The Stage 5 report, `zoom_out_report.md`, was
+    removed and remains in git history.
 
 --------------------------------------------------------------------------------
 

@@ -88,7 +88,7 @@ All work is tracked in Linear.
     *   The SQL and the test case include still-open tasks.
 
     It's unclear which wording is the spec.
-*   **Same issue in Stage 5:** M4 in `zoom_out_report.md`.
+*   **Same issue in Stage 5:** M4 in `zoom_out_report.md` (removed; see git history).
 
 ### C4. Does a task leave the warning list once its project is tagged? (CUJ 5 lines 220–222, line 388, Goal 7 line 108)
 
