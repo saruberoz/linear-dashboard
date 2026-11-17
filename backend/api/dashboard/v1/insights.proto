@@ -1,0 +1,283 @@
+syntax = "proto3";
+
+package dashboard.v1;
+
+import "dashboard/v1/dashboard.proto";
+import "google/api/annotations.proto";
+
+option go_package = "linear-dashboard/backend/api/dashboard/v1;dashboardv1";
+
+// Custom dashboards, modelled on Linear Insights: an insight plots a measure
+// (effort or issue count) sliced by one dimension and optionally segmented by
+// another, over filtered tasks. Dashboards are shared: stored in the database
+// and editable by everyone who can open the app.
+service InsightService {
+  rpc ListDashboards(ListDashboardsRequest) returns (ListDashboardsResponse) {
+    option (google.api.http) = {get: "/v1/dashboards"};
+  }
+  rpc CreateDashboard(CreateDashboardRequest) returns (CreateDashboardResponse) {
+    option (google.api.http) = {
+      post: "/v1/dashboards"
+      body: "*"
+    };
+  }
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse) {
+    option (google.api.http) = {get: "/v1/dashboards/{id}"};
+  }
+  rpc UpdateDashboard(UpdateDashboardRequest) returns (UpdateDashboardResponse) {
+    option (google.api.http) = {
+      put: "/v1/dashboards/{id}"
+      body: "*"
+    };
+  }
+  rpc DeleteDashboard(DeleteDashboardRequest) returns (DeleteDashboardResponse) {
+    option (google.api.http) = {delete: "/v1/dashboards/{id}"};
+  }
+  rpc CreateInsight(CreateInsightRequest) returns (CreateInsightResponse) {
+    option (google.api.http) = {
+      post: "/v1/dashboards/{dashboard_id}/insights"
+      body: "*"
+    };
+  }
+  rpc UpdateInsight(UpdateInsightRequest) returns (UpdateInsightResponse) {
+    option (google.api.http) = {
+      put: "/v1/dashboards/{dashboard_id}/insights/{id}"
+      body: "*"
+    };
+  }
+  rpc DeleteInsight(DeleteInsightRequest) returns (DeleteInsightResponse) {
+    option (google.api.http) = {delete: "/v1/dashboards/{dashboard_id}/insights/{id}"};
+  }
+  // RunInsight computes one insight over the current data for a date range.
+  rpc RunInsight(RunInsightRequest) returns (RunInsightResponse) {
+    option (google.api.http) = {
+      post: "/v1/insights/run"
+      body: "*"
+    };
+  }
+  // ListInsightTasks returns the tasks behind one bar, segment, cell or metric.
+  rpc ListInsightTasks(ListInsightTasksRequest) returns (ListInsightTasksResponse) {
+    option (google.api.http) = {
+      post: "/v1/insights/tasks"
+      body: "*"
+    };
+  }
+  // GetInsightOptions lists values for filter pickers (teams).
+  rpc GetInsightOptions(GetInsightOptionsRequest) returns (GetInsightOptionsResponse) {
+    option (google.api.http) = {get: "/v1/insights/options"};
+  }
+}
+
+// Filters narrow the tasks an insight looks at. Empty lists mean "no filter".
+// Dashboard filters and insight filters both apply (an intersection).
+message InsightFilters {
+  repeated string segments = 1; // segment keys; a shared project counts at its share
+  repeated string statuses = 2; // done | in_progress | not_started
+  repeated int32 priorities = 3; // 0-4
+  repeated string team_ids = 4;
+  bool include_untagged = 5; // also untagged projects and tasks without a project
+  repeated string labels = 6; // task label names, exact (case-insensitive); a task needs one of them
+  string label_match = 7; // case-insensitive text a task label must contain, e.g. "bug"
+}
+
+message InsightSpec {
+  // "effort" | "count" | time measures in days: "cycle_time" (started → completed),
+  // "lead_time" (created → completed), "issue_age" (created → now, open tasks only),
+  // "triage_time" (entered triage → triaged)
+  string measure = 1;
+  // Dimensions: assignee | priority | status | segment | label | team | project |
+  // initiative | created_month | completed_month
+  string slice = 2;
+  string segment = 3; // a dimension, or "" for none
+  string view = 4; // "bar" | "table" | "metric" | "scatter" (time measures only)
+  InsightFilters filters = 5;
+}
+
+message Insight {
+  string id = 1;
+  string title = 2;
+  InsightSpec spec = 3;
+  int32 position = 4;
+}
+
+message SavedDashboard {
+  string id = 1;
+  string name = 2;
+  InsightFilters filters = 3;
+  repeated Insight insights = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+message DashboardSummary {
+  string id = 1;
+  string name = 2;
+  int32 insights = 3;
+}
+
+message ListDashboardsRequest {}
+
+message ListDashboardsResponse {
+  repeated DashboardSummary dashboards = 1;
+}
+
+message CreateDashboardRequest {
+  string name = 1;
+}
+
+message CreateDashboardResponse {
+  SavedDashboard dashboard = 1;
+}
+
+message GetDashboardRequest {
+  string id = 1;
+}
+
+message GetDashboardResponse {
+  SavedDashboard dashboard = 1;
+}
+
+message UpdateDashboardRequest {
+  string id = 1;
+  string name = 2;
+  InsightFilters filters = 3;
+}
+
+message UpdateDashboardResponse {
+  SavedDashboard dashboard = 1;
+}
+
+message DeleteDashboardRequest {
+  string id = 1;
+}
+
+message DeleteDashboardResponse {}
+
+message CreateInsightRequest {
+  string dashboard_id = 1;
+  string title = 2;
+  InsightSpec spec = 3;
+}
+
+message CreateInsightResponse {
+  Insight insight = 1;
+}
+
+message UpdateInsightRequest {
+  string dashboard_id = 1;
+  string id = 2;
+  string title = 3;
+  InsightSpec spec = 4;
+  int32 position = 5;
+}
+
+message UpdateInsightResponse {
+  Insight insight = 1;
+}
+
+message DeleteInsightRequest {
+  string dashboard_id = 1;
+  string id = 2;
+}
+
+message DeleteInsightResponse {}
+
+// Distribution of a time measure, in days.
+message TimeStats {
+  int32 n = 1;
+  double p25 = 2;
+  double p50 = 3;
+  double p75 = 4;
+  double p95 = 5;
+  double max = 6;
+}
+
+message InsightValue {
+  string key = 1;
+  string label = 2;
+  double value = 3; // time measures: median days
+  int32 tasks = 4;
+  TimeStats stats = 5; // time measures only
+  int32 shared_tasks = 6; // tasks here that also sit in another value of the same dimension (e.g. 2 labels)
+}
+
+// One task in a scatterplot.
+message InsightPoint {
+  string task_id = 1;
+  string identifier = 2;
+  string title = 3;
+  string url = 4;
+  string date = 5; // completed date (cycle, lead), triaged date (triage) or created date (age)
+  double days = 6;
+  string group_key = 7;
+  string group_label = 8;
+  string segment_key = 9;
+}
+
+message InsightGroup {
+  string key = 1; // slice value key; "_none" for "No …"
+  string label = 2;
+  double value = 3;
+  int32 tasks = 4;
+  repeated InsightValue segments = 5; // empty when the insight has no segment
+  TimeStats stats = 6; // time measures only
+  int32 shared_tasks = 7; // tasks here that also sit in another group (e.g. a task with 2 labels); effort is split between them
+}
+
+message InsightResult {
+  string measure = 1;
+  string slice = 2;
+  string segment = 3;
+  repeated InsightGroup groups = 4; // sorted: months by time, others by value
+  repeated InsightValue segment_values = 5; // every segment value present, for the legend
+  double total = 6; // effort or count over distinct tasks (bars can add up to more for multi-valued dimensions)
+  int32 tasks = 7;
+  bool multi_valued = 8; // true when a task can appear in several groups or segments
+  bool time_measure = 9;
+  TimeStats stats = 10; // overall distribution, time measures only
+  repeated InsightPoint points = 11; // time measures only, at most 3000
+  int32 points_omitted = 12;
+}
+
+message RunInsightRequest {
+  InsightSpec spec = 1;
+  InsightFilters dashboard_filters = 2;
+  string from = 3;
+  string to = 4;
+}
+
+message RunInsightResponse {
+  InsightResult result = 1;
+}
+
+message ListInsightTasksRequest {
+  InsightSpec spec = 1;
+  InsightFilters dashboard_filters = 2;
+  string from = 3;
+  string to = 4;
+  string slice_key = 5; // "" = all slices
+  string segment_key = 6; // "" = all segments
+}
+
+message ListInsightTasksResponse {
+  repeated TaskRow tasks = 1;
+  double total = 2; // equals the clicked value (time measures: median days)
+}
+
+message GetInsightOptionsRequest {}
+
+message TeamOption {
+  string id = 1;
+  string key = 2;
+  string name = 3;
+}
+
+message LabelOption {
+  string name = 1;
+  int32 tasks = 2;
+}
+
+message GetInsightOptionsResponse {
+  repeated TeamOption teams = 1;
+  repeated LabelOption labels = 2; // distinct task label names, most used first
+}

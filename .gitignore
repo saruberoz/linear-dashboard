@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+
+# Secrets: never commit real env files
+.env
+.env.*
+!.env.example
+
+# Real Linear data snapshots (task titles, people's names)
+data/
+
+# Brainstorm companion scratch files
+.superpowers/

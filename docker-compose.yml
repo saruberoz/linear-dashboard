@@ -1,0 +1,48 @@
+# Effort Dashboard: CockroachDB + Go (Kratos) backend + Next.js frontend.
+# Usage: cp .env.example .env, set LINEAR_API_KEY, then `docker compose up --build`.
+services:
+  cockroach:
+    image: cockroachdb/cockroach:v26.4.0
+    command: start-single-node --insecure --accept-sql-without-tls
+    environment:
+      COCKROACH_DATABASE: dashboard
+    volumes:
+      - cockroach-data:/cockroach/cockroach-data
+    healthcheck:
+      test: ["CMD", "cockroach", "sql", "--insecure", "--host=localhost:26257", "-e", "select 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    depends_on:
+      cockroach:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://root@cockroach:26257/dashboard?sslmode=disable
+      LINEAR_API_KEY: ${LINEAR_API_KEY:?set LINEAR_API_KEY in .env}
+      SYNC_CRON: ${SYNC_CRON:-0 1 * * *}
+      SYNC_TZ: ${SYNC_TZ:-Asia/Jakarta}
+      SYNC_COOLDOWN: ${SYNC_COOLDOWN:-15m}
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "/server", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3300}:3000"
+    restart: unless-stopped
+
+volumes:
+  cockroach-data:

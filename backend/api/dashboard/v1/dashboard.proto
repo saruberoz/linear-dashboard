@@ -1,0 +1,391 @@
+syntax = "proto3";
+
+package dashboard.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "linear-dashboard/backend/api/dashboard/v1;dashboardv1";
+
+// Scopes are encoded as one string everywhere:
+//   "all" | "segment:<KEY>" | "initiative:<ID>" | "project:<ID>"
+// Segment keys: B2B, B2G, B2BNG, B2C.
+// Dates are "YYYY-MM-DD", inclusive, Asia/Jakarta. Effort is in estimate points.
+
+service DashboardService {
+  rpc GetMenu(GetMenuRequest) returns (GetMenuResponse) {
+    option (google.api.http) = {get: "/v1/menu"};
+  }
+  rpc GetOverview(GetOverviewRequest) returns (GetOverviewResponse) {
+    option (google.api.http) = {get: "/v1/overview"};
+  }
+  rpc GetSegment(GetSegmentRequest) returns (GetSegmentResponse) {
+    option (google.api.http) = {get: "/v1/segments/{segment}"};
+  }
+  rpc GetInitiative(GetInitiativeRequest) returns (GetInitiativeResponse) {
+    option (google.api.http) = {get: "/v1/initiatives/{id}"};
+  }
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse) {
+    option (google.api.http) = {get: "/v1/projects/{id}"};
+  }
+  // ListTasks returns exactly the tasks behind one contributor-table number.
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
+    option (google.api.http) = {get: "/v1/tasks"};
+  }
+  rpc ListMissingEstimates(ListMissingEstimatesRequest) returns (ListMissingEstimatesResponse) {
+    option (google.api.http) = {get: "/v1/missing-estimates"};
+  }
+  rpc ListSegmentLabelWarnings(ListSegmentLabelWarningsRequest) returns (ListSegmentLabelWarningsResponse) {
+    option (google.api.http) = {get: "/v1/warnings/segment-labels"};
+  }
+  rpc ListUntaggedProjects(ListUntaggedProjectsRequest) returns (ListUntaggedProjectsResponse) {
+    option (google.api.http) = {get: "/v1/untagged-projects"};
+  }
+  // Projects active in the range that are not in any [W]/[WS] initiative, tagged or not.
+  rpc ListProjectsWithoutInitiative(ListProjectsWithoutInitiativeRequest) returns (ListProjectsWithoutInitiativeResponse) {
+    option (google.api.http) = {get: "/v1/projects-without-initiative"};
+  }
+  // Initiatives with no linked project. Not date-filtered: they have no tasks.
+  rpc ListInitiativesWithoutProjects(ListInitiativesWithoutProjectsRequest) returns (ListInitiativesWithoutProjectsResponse) {
+    option (google.api.http) = {get: "/v1/initiatives-without-projects"};
+  }
+}
+
+service SyncService {
+  // StartSync replies 409 SYNC_RUNNING or 429 SYNC_COOLDOWN before any work starts.
+  rpc StartSync(StartSyncRequest) returns (StartSyncResponse) {
+    option (google.api.http) = {
+      post: "/v1/sync"
+      body: "*"
+    };
+  }
+  rpc GetSyncStatus(GetSyncStatusRequest) returns (GetSyncStatusResponse) {
+    option (google.api.http) = {get: "/v1/sync"};
+  }
+}
+
+// ---------- shared ----------
+
+message SyncInfo {
+  bool running = 1;
+  string last_success_at = 2; // RFC 3339, empty if never
+  string last_attempt_at = 3;
+  string last_status = 4; // "succeeded" | "failed" | "running" | ""
+  string last_error = 5; // sanitized, never contains the API key
+}
+
+message StatusSplit {
+  double done = 1;
+  double in_progress = 2;
+  double not_started = 3;
+}
+
+message Breakdown {
+  string key = 1;
+  string label = 2;
+  double pts = 3;
+  double pct = 4; // share of the breakdown's own total, 0-100
+}
+
+message ContributorCell {
+  double pts = 1;
+  int32 count = 2;
+}
+
+message ContributorRow {
+  string assignee_id = 1; // "_unassigned" for unassigned tasks
+  string assignee = 2;
+  double total = 3;
+  int32 count = 4;
+  map<string, ContributorCell> cells = 5; // keyed by column key
+  int32 missing = 6;
+}
+
+message ContributorTable {
+  string dim = 1; // "priority" | "status" | "segment"
+  repeated Breakdown columns = 2; // key + label of each column, pts = column total
+  repeated ContributorRow rows = 3;
+  double total = 4;
+  int32 missing = 5;
+}
+
+message Summary {
+  double total = 1;
+  StatusSplit by_status = 2;
+  repeated Breakdown by_priority = 3; // keys "1".."4","0"
+  repeated Breakdown by_label = 4; // labeled effort only; pct of labeled effort
+  double unlabeled = 5;
+  int32 tasks_total = 6;
+  int32 tasks_missing = 7;
+  repeated ContributorTable contributors = 8; // priority, status, segment (segment omitted on segment scopes)
+}
+
+message ProjectRow {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  string state = 4; // Linear project state
+  repeated string segments = 5;
+  double pts = 6; // real project total
+  double share_pts = 7; // share counted in the current segment scope (= pts elsewhere)
+  int32 split_of = 8; // >1 when share_pts is pts / split_of
+  StatusSplit status = 9;
+  int32 tasks = 10;
+  int32 missing = 11;
+  repeated string hidden_initiatives = 12; // names of non-[W]/[WS] initiatives (sprints, buckets) it belongs to
+}
+
+message TaskRow {
+  string id = 1;
+  string identifier = 2;
+  string title = 3;
+  string url = 4;
+  string state_name = 5;
+  string status = 6; // "done" | "in_progress" | "not_started" | "canceled"
+  int32 priority = 7;
+  string assignee = 8; // display name, "" when unassigned
+  repeated string labels = 9;
+  bool has_estimate = 10;
+  double estimate = 11;
+  double counted_pts = 12; // effective points of the task (0 if canceled or deferred)
+  double share_pts = 13; // what this task contributes to the requested number
+  bool deferred = 14; // own estimate ignored because estimated sub-tasks exist
+  bool missing = 15;
+  string project_id = 16;
+  string project_name = 17;
+  int32 depth = 18; // nesting under in-range parents (project view only)
+  repeated string task_segments = 19; // segment labels found on the task itself
+  string created_at = 20;
+  bool has_days = 21; // set by time-measure insights
+  double days = 22; // the task's duration for that measure
+  int32 split_count = 23; // insight drill-downs: how many groups this task's value is shared with (e.g. 2 labels)
+}
+
+message InitiativeRef {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+}
+
+// ---------- menu ----------
+
+message GetMenuRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message MenuProject {
+  string id = 1;
+  string name = 2;
+}
+
+message MenuInitiative {
+  string id = 1; // "" for "No initiative"
+  string name = 2;
+  repeated MenuProject projects = 3;
+}
+
+message MenuSegment {
+  string key = 1;
+  string label = 2;
+  int32 project_count = 3;
+  repeated MenuInitiative initiatives = 4;
+}
+
+message GetMenuResponse {
+  repeated MenuSegment segments = 1;
+  int32 missing_count = 2;
+  int32 warning_count = 3;
+  int32 untagged_count = 4;
+  SyncInfo sync = 5;
+  int32 no_initiative_count = 6;
+  int32 empty_initiative_count = 7;
+}
+
+// ---------- overview ----------
+
+message GetOverviewRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message SegmentShare {
+  string key = 1;
+  string label = 2;
+  double pts = 3;
+  double pct = 4;
+  int32 projects = 5;
+  int32 shared = 6; // projects also tagged with another segment
+  StatusSplit status = 7;
+}
+
+message WarningSummary {
+  int32 tasks = 1;
+  double pts = 2;
+  int32 uncounted = 3;
+}
+
+message GetOverviewResponse {
+  repeated SegmentShare segments = 1;
+  double tagged_total = 2;
+  Summary summary = 3;
+  WarningSummary warnings = 4;
+  int32 untagged_projects = 5;
+}
+
+// ---------- segment ----------
+
+message GetSegmentRequest {
+  string segment = 1;
+  string from = 2;
+  string to = 3;
+}
+
+message InitiativeGroup {
+  string id = 1; // "" for "No initiative"
+  string name = 2;
+  string url = 3;
+  double share_pts = 4;
+  repeated ProjectRow projects = 5;
+}
+
+message GetSegmentResponse {
+  string key = 1;
+  string label = 2;
+  int32 project_count = 3;
+  Summary summary = 4;
+  repeated InitiativeGroup groups = 5;
+}
+
+// ---------- initiative ----------
+
+message GetInitiativeRequest {
+  string id = 1;
+  string from = 2;
+  string to = 3;
+}
+
+message GetInitiativeResponse {
+  InitiativeRef initiative = 1;
+  repeated string segments = 2;
+  Summary summary = 3;
+  repeated ProjectRow projects = 4;
+}
+
+// ---------- project ----------
+
+message GetProjectRequest {
+  string id = 1;
+  string from = 2;
+  string to = 3;
+}
+
+message GetProjectResponse {
+  ProjectRow project = 1;
+  repeated InitiativeRef initiatives = 2;
+  Summary summary = 3;
+  repeated TaskRow tasks = 4; // in range, parents before their sub-tasks
+}
+
+// ---------- drill-down ----------
+
+message ListTasksRequest {
+  string scope = 1;
+  string from = 2;
+  string to = 3;
+  string dim = 4; // "priority" | "status" | "segment"
+  string column = 5; // a column key, or "_total" / "_missing"
+  string assignee_id = 6; // "_unassigned" for unassigned
+}
+
+message ListTasksResponse {
+  repeated TaskRow tasks = 1;
+  double total = 2; // sum of share_pts, equals the clicked number
+}
+
+// ---------- housekeeping ----------
+
+message ListMissingEstimatesRequest {
+  string scope = 1; // empty means "all"
+  string from = 2;
+  string to = 3;
+  bool all = 4; // include untagged projects and tasks without a project
+}
+
+message AssigneeGroup {
+  string assignee_id = 1;
+  string assignee = 2;
+  repeated TaskRow tasks = 3;
+}
+
+message ListMissingEstimatesResponse {
+  string scope_title = 1;
+  int32 total = 2;
+  repeated AssigneeGroup groups = 3;
+}
+
+message ListSegmentLabelWarningsRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message WarningGroup {
+  string project_id = 1; // "" when the task has no project
+  string project_name = 2;
+  string project_url = 3;
+  repeated string project_segments = 4;
+  bool counted = 5; // true when the project's own segment already counts these tasks
+  double pts = 6;
+  repeated TaskRow tasks = 7;
+}
+
+message ListSegmentLabelWarningsResponse {
+  int32 total = 1;
+  repeated WarningGroup groups = 2;
+}
+
+message ListUntaggedProjectsRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message ListUntaggedProjectsResponse {
+  repeated ProjectRow projects = 1;
+}
+
+message ListProjectsWithoutInitiativeRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message ListProjectsWithoutInitiativeResponse {
+  repeated ProjectRow projects = 1; // tagged projects first, then by effort
+}
+
+message ListInitiativesWithoutProjectsRequest {}
+
+message EmptyInitiative {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  string status = 4;
+  bool visible = 5; // name starts with [W] or [WS]
+  string created_at = 6;
+}
+
+message ListInitiativesWithoutProjectsResponse {
+  repeated EmptyInitiative initiatives = 1; // [W]/[WS] first, then by name
+}
+
+// ---------- sync ----------
+
+message StartSyncRequest {}
+
+message StartSyncResponse {
+  SyncInfo sync = 1;
+}
+
+message GetSyncStatusRequest {}
+
+message GetSyncStatusResponse {
+  SyncInfo sync = 1;
+}

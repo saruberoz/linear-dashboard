@@ -1,0 +1,7 @@
+# Local development: publish CockroachDB on localhost so the backend and the
+# integration tests can run on the host. Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d cockroach
+services:
+  cockroach:
+    ports:
+      - "127.0.0.1:26257:26257"

@@ -1,0 +1,12 @@
+{
+  "name": "linear-dashboard",
+  "private": true,
+  "description": "Repo-level tooling only (git hooks). App code lives in backend/ and frontend/ (mockup/ for now).",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "9.1.7",
+    "lint-staged": "17.6.1"
+  }
+}

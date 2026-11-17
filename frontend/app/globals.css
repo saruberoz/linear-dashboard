@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Linear-inspired light theme */
+  --background: #fcfcfd;
+  --foreground: #1b1b1f;
+  --card: #ffffff;
+  --card-foreground: #1b1b1f;
+  --popover: #ffffff;
+  --popover-foreground: #1b1b1f;
+  --primary: #5e6ad2;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f1f3;
+  --secondary-foreground: #1b1b1f;
+  --muted: #f1f1f3;
+  --muted-foreground: #6b6f76;
+  --accent: #eeeff1;
+  --accent-foreground: #1b1b1f;
+  --destructive: #d03b3b;
+  --border: #e6e6e9;
+  --input: #dcdce0;
+  --ring: #5e6ad2;
+  --chart-1: #5e6ad2;
+  --chart-2: #2a78d6;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #eb6834;
+  --radius: 0.5rem;
+  --sidebar: #f6f6f7;
+  --sidebar-foreground: #1b1b1f;
+  --sidebar-primary: #5e6ad2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9e9ec;
+  --sidebar-accent-foreground: #1b1b1f;
+  --sidebar-border: #e6e6e9;
+  --sidebar-ring: #5e6ad2;
+  --seg-b2b: #2a78d6;
+  --seg-b2g: #eb6834;
+  --seg-b2bng: #1baf7a;
+  --seg-b2c: #eda100;
+  --st-done: #5e6ad2;
+  --st-progress: #e2b203;
+  --st-not: #b4b8bf;
+  --warn: #b26a00;
+}
+
+.dark {
+  /* Linear-inspired dark theme */
+  --background: #0f1011;
+  --foreground: #f7f8f8;
+  --card: #141516;
+  --card-foreground: #f7f8f8;
+  --popover: #1a1b1e;
+  --popover-foreground: #f7f8f8;
+  --primary: #5e6ad2;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1d21;
+  --secondary-foreground: #f7f8f8;
+  --muted: #1c1d21;
+  --muted-foreground: #8a8f98;
+  --accent: #1f2024;
+  --accent-foreground: #f7f8f8;
+  --destructive: #e5484d;
+  --border: #23252a;
+  --input: #2a2c31;
+  --ring: #5e6ad2;
+  --chart-1: #6e79d6;
+  --chart-2: #3987e5;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d95926;
+  --sidebar: #090a0b;
+  --sidebar-foreground: #d0d6e0;
+  --sidebar-primary: #5e6ad2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1d21;
+  --sidebar-accent-foreground: #f7f8f8;
+  --sidebar-border: #1d1e21;
+  --sidebar-ring: #5e6ad2;
+  --seg-b2b: #3987e5;
+  --seg-b2g: #d95926;
+  --seg-b2bng: #199e70;
+  --seg-b2c: #c98500;
+  --st-done: #6e79d6;
+  --st-progress: #f2c94c;
+  --st-not: #4b4f57;
+  --warn: #f2994a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-[13px] text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
