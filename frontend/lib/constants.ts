@@ -135,3 +135,16 @@ export function colorFor(dim: string, key: string, index: number): string {
       : PALETTE[index % PALETTE.length])
   )
 }
+
+// Linear project states in workflow order. The untagged page hides canceled until picked.
+export const PROJECT_STATES = [
+  "backlog",
+  "planned",
+  "started",
+  "paused",
+  "completed",
+  "canceled",
+]
+export const DEFAULT_PROJECT_STATES = PROJECT_STATES.filter(
+  (s) => s !== "canceled"
+)

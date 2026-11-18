@@ -146,7 +146,7 @@ func (d *Dataset) Menu(r Range) *pb.GetMenuResponse {
 	missing, _ := d.missingTasks(Scope{Kind: "all"}, r, false)
 	res.MissingCount = int32(len(missing))
 	res.WarningCount = int32(len(d.warningTasks(r)))
-	res.UntaggedCount = int32(len(d.untaggedProjects(r)))
+	res.UntaggedCount = d.untaggedCount(r)
 	res.NoInitiativeCount = int32(len(d.projectsWithoutInitiative(r)))
 	res.EmptyInitiativeCount = int32(len(d.initiativesWithoutProjects()))
 	return res
@@ -236,7 +236,7 @@ func (d *Dataset) Overview(r Range) *pb.GetOverviewResponse {
 			res.Warnings.Uncounted++
 		}
 	}
-	res.UntaggedProjects = int32(len(d.untaggedProjects(r)))
+	res.UntaggedProjects = d.untaggedCount(r)
 	return res
 }
 
@@ -499,6 +499,18 @@ func (d *Dataset) untaggedProjects(r Range) []*Project {
 	}
 	sortProjects(out)
 	return out
+}
+
+// untaggedCount counts untagged projects that are not canceled, matching the
+// untagged page, which hides canceled projects by default.
+func (d *Dataset) untaggedCount(r Range) int32 {
+	var n int32
+	for _, p := range d.untaggedProjects(r) {
+		if p.State != "canceled" {
+			n++
+		}
+	}
+	return n
 }
 
 // UntaggedProjects lists visible projects without a segment label, largest effort first.

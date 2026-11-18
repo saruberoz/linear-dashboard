@@ -221,3 +221,17 @@ func TestInitiativesWithoutProjects(t *testing.T) {
 		t.Errorf("fixture initiatives without projects = %v, want none", got.Initiatives)
 	}
 }
+
+func TestUntaggedCountsLeaveOutCanceledProjects(t *testing.T) {
+	d, r := fixture(t)
+	d.Projects["dead"] = &Project{ID: "dead", Name: "Dead", State: "canceled", CreatedAt: at("2026-11-05 10:00")}
+	if n := len(d.UntaggedProjects(r).Projects); n != 2 {
+		t.Errorf("untagged list has %d projects, want 2 (canceled included for the page filter)", n)
+	}
+	if n := d.Menu(r).UntaggedCount; n != 1 {
+		t.Errorf("menu untagged count = %d, want 1 (canceled left out)", n)
+	}
+	if n := d.Overview(r).UntaggedProjects; n != 1 {
+		t.Errorf("overview untagged count = %d, want 1 (canceled left out)", n)
+	}
+}

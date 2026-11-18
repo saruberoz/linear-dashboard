@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Table,
   TableBody,
@@ -60,7 +61,16 @@ import {
 import { TaskList } from "@/components/task-list"
 import { OpenInLinear } from "@/components/open-in-linear"
 import { CustomDashboardView } from "@/components/custom-dashboard"
-import { SEG, SEGMENTS, STATUS, fmt, pct, pctFmt } from "@/lib/constants"
+import {
+  DEFAULT_PROJECT_STATES,
+  PROJECT_STATES,
+  SEG,
+  SEGMENTS,
+  STATUS,
+  fmt,
+  pct,
+  pctFmt,
+} from "@/lib/constants"
 import type * as T from "@/lib/types"
 import type { Range, View } from "@/lib/view"
 import { useDash } from "@/hooks/use-dash"
@@ -825,22 +835,66 @@ function WarningsView({ d }: { d: T.WarningsResponse }) {
   )
 }
 
+function ProjectStateFilter({ rows }: { rows: T.ProjectRow[] }) {
+  const { pstate, set } = useDash()
+  const counts = new Map<string, number>()
+  for (const p of rows) counts.set(p.state, (counts.get(p.state) ?? 0) + 1)
+  const states = [
+    ...PROJECT_STATES,
+    ...[...counts.keys()].filter((s) => !PROJECT_STATES.includes(s)),
+  ]
+  return (
+    <ToggleGroup
+      multiple
+      size="sm"
+      variant="outline"
+      aria-label="Project state"
+      value={pstate}
+      onValueChange={(v: string[]) => {
+        if (!v.length) return
+        const sorted = states.filter((s) => v.includes(s))
+        const isDefault =
+          sorted.length === DEFAULT_PROJECT_STATES.length &&
+          sorted.every((s) => DEFAULT_PROJECT_STATES.includes(s))
+        set({ pstate: isDefault ? "" : sorted.join(",") })
+      }}
+      className="flex-wrap"
+    >
+      {states.map((s) => (
+        <ToggleGroupItem key={s} value={s} className="capitalize">
+          {s}
+          <span className="text-muted-foreground tabular-nums">
+            {counts.get(s) ?? 0}
+          </span>
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
+}
+
 function ProjectListView({
   title,
   meta,
   rows,
   extra,
+  stateFilter,
 }: {
   title: string
   meta: string
   rows: T.ProjectRow[]
   extra?: "hidden"
+  stateFilter?: boolean
 }) {
+  const { pstate } = useDash()
+  const shown = stateFilter
+    ? rows.filter((p) => pstate.includes(p.state))
+    : rows
   return (
     <>
       <Title meta={meta}>{title}</Title>
-      <ItemsCard title={`${rows.length} projects`}>
-        <ProjectTable rows={rows} extra={extra} />
+      {stateFilter && <ProjectStateFilter rows={rows} />}
+      <ItemsCard title={`${shown.length} projects`}>
+        <ProjectTable rows={shown} extra={extra} />
       </ItemsCard>
     </>
   )
@@ -1025,8 +1079,9 @@ export function Dashboard({
       body = (
         <ProjectListView
           title="Untagged projects"
-          meta="Projects active in this range with no B2B / B2G / B2B NG / B2C label. Not counted in segment shares. Largest effort first."
+          meta="Projects active in this range with no B2B / B2G / B2B NG / B2C label. Not counted in segment shares. Largest effort first. Canceled projects are hidden unless picked."
           rows={view.data.projects}
+          stateFilter
         />
       )
       break
