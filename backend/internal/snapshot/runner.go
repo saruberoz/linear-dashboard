@@ -32,7 +32,7 @@ var (
 
 // Fetcher downloads the workspace.
 type Fetcher interface {
-	FetchWorkspace(ctx context.Context) (*linear.Workspace, error)
+	FetchWorkspace(ctx context.Context, progress func(int)) (*linear.Workspace, error)
 }
 
 // Runner runs one sync at a time. Only one backend process runs syncs, so an
@@ -48,7 +48,15 @@ type Runner struct {
 	mu      sync.Mutex // held for the whole run
 	running atomic.Bool
 	wg      sync.WaitGroup
+
+	// Progress of the running sync.
+	fetched  atomic.Int64 // records downloaded so far
+	expected atomic.Int64 // records in the current copy; 0 before the first sync
+	saving   atomic.Bool  // download finished, writing to the store
 }
+
+// savingPercent is shown once the download is done; writing has no finer progress.
+const savingPercent = 95
 
 // NewRunner returns a runner. cooldown applies to manual syncs only.
 func NewRunner(f Fetcher, s *store.Store, cooldown time.Duration, logger *slog.Logger) *Runner {
@@ -63,6 +71,30 @@ func (r *Runner) SetDataset(d *report.Dataset) { r.current.Store(d) }
 
 // Running reports whether a sync is in progress.
 func (r *Runner) Running() bool { return r.running.Load() }
+
+// Progress reports a running sync's phase ("fetching" or "saving") and percent
+// done. While fetching, it compares records downloaded so far with the size of
+// the current copy, so it is -1 on the first sync, when that size is unknown.
+func (r *Runner) Progress() (phase string, percent int32) {
+	if r.saving.Load() {
+		return "saving", savingPercent
+	}
+	return "fetching", fetchPercent(r.fetched.Load(), r.expected.Load())
+}
+
+func fetchPercent(fetched, expected int64) int32 {
+	if expected <= 0 {
+		return -1
+	}
+	return int32(min(fetched*savingPercent/expected, savingPercent))
+}
+
+func size(d *report.Dataset) int64 {
+	if d == nil {
+		return 0
+	}
+	return int64(len(d.Teams) + len(d.Users) + len(d.Labels) + len(d.Initiatives) + len(d.Projects) + len(d.Tasks))
+}
 
 // Start checks the lock and, for manual syncs, the cooldown, records the run and
 // returns its id; the sync itself continues in the background under base, which
@@ -87,6 +119,9 @@ func (r *Runner) Start(ctx, base context.Context, trigger string) (int64, error)
 		r.mu.Unlock()
 		return 0, err
 	}
+	r.fetched.Store(0)
+	r.expected.Store(size(r.Dataset()))
+	r.saving.Store(false)
 	r.running.Store(true)
 	r.wg.Add(1)
 	go func() {
@@ -125,10 +160,11 @@ func (r *Runner) execute(base context.Context, id int64, trigger string) {
 
 // run fetches, derives and writes. Nothing is written unless the whole fetch succeeded.
 func (r *Runner) run(ctx context.Context) (map[string]int, error) {
-	ws, err := r.fetch.FetchWorkspace(ctx)
+	ws, err := r.fetch.FetchWorkspace(ctx, func(n int) { r.fetched.Add(int64(n)) })
 	if err != nil {
 		return nil, err
 	}
+	r.saving.Store(true)
 	teams := map[string]report.Team{}
 	for _, t := range ws.Teams {
 		teams[t.ID] = t

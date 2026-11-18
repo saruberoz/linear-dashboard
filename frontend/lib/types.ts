@@ -9,6 +9,8 @@ export interface SyncInfo {
   lastAttemptAt: string
   lastStatus: "" | "running" | "succeeded" | "failed"
   lastError: string
+  phase?: "fetching" | "saving" // while running
+  progress?: number // while running: 0–100, or -1 when the size is unknown
 }
 
 export interface StatusSplit {

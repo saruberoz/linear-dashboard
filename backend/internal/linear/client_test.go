@@ -44,7 +44,7 @@ func TestPaginateFollowsCursors(t *testing.T) {
 	defer srv.Close()
 
 	var got []string
-	err := paginate(context.Background(), newTestClient(srv), teamsQuery, func(ns []idRef) {
+	err := paginate(context.Background(), newTestClient(srv), teamsQuery, nil, func(ns []idRef) {
 		for _, n := range ns {
 			got = append(got, n.ID)
 		}
@@ -127,11 +127,15 @@ func TestTrashedTasksAreSkipped(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	ws, err := newTestClient(srv).FetchWorkspace(context.Background())
+	var fetched int
+	ws, err := newTestClient(srv).FetchWorkspace(context.Background(), func(n int) { fetched += n })
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(ws.Tasks) != 1 || ws.Tasks[0].ID != "keep" || ws.Trashed != 1 {
 		t.Errorf("tasks=%v trashed=%d, want only 'keep' and 1 trashed", ws.Tasks, ws.Trashed)
+	}
+	if fetched != 2 {
+		t.Errorf("progress reported %d records, want 2 (trashed ones are downloaded too)", fetched)
 	}
 }

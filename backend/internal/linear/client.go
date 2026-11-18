@@ -132,8 +132,8 @@ type connection[T any] struct {
 }
 
 // paginate runs a query whose single root field is a connection taking $after,
-// calling fn for every page.
-func paginate[T any](ctx context.Context, c *Client, query string, fn func([]T)) error {
+// calling fn for every page and progress, when set, with the page's record count.
+func paginate[T any](ctx context.Context, c *Client, query string, progress func(int), fn func([]T)) error {
 	var after any
 	for {
 		var data map[string]connection[T]
@@ -145,6 +145,9 @@ func paginate[T any](ctx context.Context, c *Client, query string, fn func([]T))
 		}
 		for _, conn := range data {
 			fn(conn.Nodes)
+			if progress != nil {
+				progress(len(conn.Nodes))
+			}
 			if !conn.PageInfo.HasNextPage {
 				return nil
 			}

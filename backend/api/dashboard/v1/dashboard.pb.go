@@ -29,6 +29,8 @@ type SyncInfo struct {
 	LastAttemptAt string                 `protobuf:"bytes,3,opt,name=last_attempt_at,json=lastAttemptAt,proto3" json:"last_attempt_at,omitempty"`
 	LastStatus    string                 `protobuf:"bytes,4,opt,name=last_status,json=lastStatus,proto3" json:"last_status,omitempty"` // "succeeded" | "failed" | "running" | ""
 	LastError     string                 `protobuf:"bytes,5,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`    // sanitized, never contains the API key
+	Phase         string                 `protobuf:"bytes,6,opt,name=phase,proto3" json:"phase,omitempty"`                             // while running: "fetching" | "saving"
+	Progress      int32                  `protobuf:"varint,7,opt,name=progress,proto3" json:"progress,omitempty"`                      // while running: 0–100, or -1 on the first sync when the size is unknown
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -96,6 +98,20 @@ func (x *SyncInfo) GetLastError() string {
 		return x.LastError
 	}
 	return ""
+}
+
+func (x *SyncInfo) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *SyncInfo) GetProgress() int32 {
+	if x != nil {
+		return x.Progress
+	}
+	return 0
 }
 
 type StatusSplit struct {
@@ -3062,7 +3078,7 @@ var File_dashboard_v1_dashboard_proto protoreflect.FileDescriptor
 
 const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\n" +
-	"\x1cdashboard/v1/dashboard.proto\x12\fdashboard.v1\x1a\x1cgoogle/api/annotations.proto\"\xb4\x01\n" +
+	"\x1cdashboard/v1/dashboard.proto\x12\fdashboard.v1\x1a\x1cgoogle/api/annotations.proto\"\xe6\x01\n" +
 	"\bSyncInfo\x12\x18\n" +
 	"\arunning\x18\x01 \x01(\bR\arunning\x12&\n" +
 	"\x0flast_success_at\x18\x02 \x01(\tR\rlastSuccessAt\x12&\n" +
@@ -3070,7 +3086,9 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\vlast_status\x18\x04 \x01(\tR\n" +
 	"lastStatus\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\x05 \x01(\tR\tlastError\"c\n" +
+	"last_error\x18\x05 \x01(\tR\tlastError\x12\x14\n" +
+	"\x05phase\x18\x06 \x01(\tR\x05phase\x12\x1a\n" +
+	"\bprogress\x18\a \x01(\x05R\bprogress\"c\n" +
 	"\vStatusSplit\x12\x12\n" +
 	"\x04done\x18\x01 \x01(\x01R\x04done\x12\x1f\n" +
 	"\vin_progress\x18\x02 \x01(\x01R\n" +

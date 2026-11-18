@@ -80,15 +80,16 @@ type issueNode struct {
 }
 
 // FetchWorkspace downloads the whole workspace: archived items included, deleted
-// (trashed) tasks excluded, disabled users included.
-func (c *Client) FetchWorkspace(ctx context.Context) (*Workspace, error) {
+// (trashed) tasks excluded, disabled users included. progress, when set, is
+// called after every page with the number of records it held.
+func (c *Client) FetchWorkspace(ctx context.Context, progress func(int)) (*Workspace, error) {
 	ws := &Workspace{}
 	steps := []struct {
 		name string
 		run  func() error
 	}{
 		{"teams", func() error {
-			return paginate(ctx, c, teamsQuery, func(ns []struct {
+			return paginate(ctx, c, teamsQuery, progress, func(ns []struct {
 				ID, Key, Name       string
 				IssueEstimationType string `json:"issueEstimationType"`
 			}) {
@@ -98,7 +99,7 @@ func (c *Client) FetchWorkspace(ctx context.Context) (*Workspace, error) {
 			})
 		}},
 		{"users", func() error {
-			return paginate(ctx, c, usersQuery, func(ns []struct {
+			return paginate(ctx, c, usersQuery, progress, func(ns []struct {
 				ID, Name    string
 				DisplayName string `json:"displayName"`
 				Active      bool
@@ -108,10 +109,10 @@ func (c *Client) FetchWorkspace(ctx context.Context) (*Workspace, error) {
 				}
 			})
 		}},
-		{"issue labels", func() error { return c.fetchLabels(ctx, issueLabelsQuery, "issue", ws) }},
-		{"project labels", func() error { return c.fetchLabels(ctx, projectLabelsQuery, "project", ws) }},
+		{"issue labels", func() error { return c.fetchLabels(ctx, issueLabelsQuery, "issue", ws, progress) }},
+		{"project labels", func() error { return c.fetchLabels(ctx, projectLabelsQuery, "project", ws, progress) }},
 		{"initiatives", func() error {
-			return paginate(ctx, c, initiativesQuery, func(ns []struct {
+			return paginate(ctx, c, initiativesQuery, progress, func(ns []struct {
 				ID, Name, Status, URL string
 				CreatedAt             time.Time `json:"createdAt"`
 			}) {
@@ -121,7 +122,7 @@ func (c *Client) FetchWorkspace(ctx context.Context) (*Workspace, error) {
 			})
 		}},
 		{"projects", func() error {
-			return paginate(ctx, c, projectsQuery, func(ns []struct {
+			return paginate(ctx, c, projectsQuery, progress, func(ns []struct {
 				ID, Name, State, URL string
 				CreatedAt            time.Time `json:"createdAt"`
 				Labels               struct{ Nodes []idRef }
@@ -134,7 +135,7 @@ func (c *Client) FetchWorkspace(ctx context.Context) (*Workspace, error) {
 			})
 		}},
 		{"tasks", func() error {
-			return paginate(ctx, c, issuesQuery, func(ns []issueNode) {
+			return paginate(ctx, c, issuesQuery, progress, func(ns []issueNode) {
 				for _, n := range ns {
 					if n.Trashed != nil && *n.Trashed {
 						ws.Trashed++
@@ -153,8 +154,8 @@ func (c *Client) FetchWorkspace(ctx context.Context) (*Workspace, error) {
 	return ws, nil
 }
 
-func (c *Client) fetchLabels(ctx context.Context, query, kind string, ws *Workspace) error {
-	return paginate(ctx, c, query, func(ns []labelNode) {
+func (c *Client) fetchLabels(ctx context.Context, query, kind string, ws *Workspace, progress func(int)) error {
+	return paginate(ctx, c, query, progress, func(ns []labelNode) {
 		for _, n := range ns {
 			l := report.Label{ID: n.ID, Kind: kind, Name: n.Name}
 			if n.Parent != nil {

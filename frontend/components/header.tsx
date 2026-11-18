@@ -122,6 +122,38 @@ export function DateRange({ range }: { range: Range }) {
   )
 }
 
+/** "Syncing… 42%" with a bar that fills as records arrive; it pulses when the percent is unknown or while saving. */
+function SyncProgress({ sync }: { sync: SyncInfo }) {
+  const pct = sync.progress ?? -1
+  const known = pct >= 0
+  const saving = sync.phase === "saving"
+  return (
+    <span
+      className="flex items-center gap-2"
+      title={`Started ${wib(sync.lastAttemptAt)}`}
+    >
+      {saving ? "Saving…" : "Syncing…"}
+      <span
+        role="progressbar"
+        aria-label="Sync progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={known ? pct : undefined}
+        className="relative h-1.5 w-20 overflow-hidden rounded-full bg-white/20"
+      >
+        <span
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-full bg-green-400 transition-[width] duration-1000 ease-out motion-reduce:transition-none",
+            (!known || saving) && "animate-pulse"
+          )}
+          style={{ width: `${known ? pct : 100}%` }}
+        />
+      </span>
+      {known && <span className="w-8 text-right tabular-nums">{pct}%</span>}
+    </span>
+  )
+}
+
 /** Shows the last sync result and runs a manual sync, polling until it finishes. */
 function SyncStatus({ initial }: { initial: SyncInfo | null }) {
   const router = useRouter()
@@ -144,7 +176,7 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
       } catch {
         // keep polling; the next tick may succeed
       }
-    }, 5000)
+    }, 2000)
     return () => clearInterval(id)
   }, [sync?.running, router, initial])
 
@@ -168,7 +200,7 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
   }
 
   let label: React.ReactNode = "Not synced yet"
-  if (sync?.running) label = <>Syncing… started {wib(sync.lastAttemptAt)}</>
+  if (sync?.running) label = <SyncProgress sync={sync} />
   else if (sync?.lastStatus === "failed")
     label = (
       <Tooltip>

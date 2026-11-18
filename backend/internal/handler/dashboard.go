@@ -206,6 +206,9 @@ func (h *Dashboard) GetSyncStatus(ctx context.Context, _ *pb.GetSyncStatusReques
 // syncInfo reports sync state; store errors degrade to "unknown" fields rather than failing the request.
 func (h *Dashboard) syncInfo(ctx context.Context) *pb.SyncInfo {
 	info := &pb.SyncInfo{Running: h.runner.Running()}
+	if info.Running {
+		info.Phase, info.Progress = h.runner.Progress()
+	}
 	if t, ok, err := h.store.LastSuccess(ctx); err == nil && ok {
 		info.LastSuccessAt = t.Format(time.RFC3339)
 	}

@@ -71,6 +71,8 @@ message SyncInfo {
   string last_attempt_at = 3;
   string last_status = 4; // "succeeded" | "failed" | "running" | ""
   string last_error = 5; // sanitized, never contains the API key
+  string phase = 6; // while running: "fetching" | "saving"
+  int32 progress = 7; // while running: 0–100, or -1 on the first sync when the size is unknown
 }
 
 message StatusSplit {
