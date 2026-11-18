@@ -23,7 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql://root@cockroach:26257/dashboard?sslmode=disable
       LINEAR_API_KEY: ${LINEAR_API_KEY:?set LINEAR_API_KEY in .env}
-      SYNC_CRON: ${SYNC_CRON:-0 1 * * *}
+      SYNC_CRON: ${SYNC_CRON:-0 1 * * *; 0 17 * * 1-5}
       SYNC_TZ: ${SYNC_TZ:-Asia/Jakarta}
       SYNC_COOLDOWN: ${SYNC_COOLDOWN:-15m}
     stop_grace_period: 20s

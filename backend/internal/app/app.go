@@ -35,7 +35,7 @@ type Config struct {
 	LinearAPIKey string
 	DatabaseURL  string
 	HTTPAddr     string
-	SyncCron     string
+	SyncCron     string // one or more cron specs separated by ";"
 	TimeZone     *time.Location
 	SyncCooldown time.Duration
 }
@@ -46,7 +46,7 @@ func ConfigFromEnv() (Config, error) {
 		LinearAPIKey: os.Getenv("LINEAR_API_KEY"),
 		DatabaseURL:  os.Getenv("DATABASE_URL"),
 		HTTPAddr:     envOr("HTTP_ADDR", ":8000"),
-		SyncCron:     envOr("SYNC_CRON", "0 1 * * *"),
+		SyncCron:     envOr("SYNC_CRON", DefaultSyncCron),
 	}
 	if cfg.LinearAPIKey == "" {
 		return Config{}, fmt.Errorf("LINEAR_API_KEY is not set")
@@ -64,6 +64,23 @@ func ConfigFromEnv() (Config, error) {
 		return Config{}, fmt.Errorf("parsing SYNC_COOLDOWN: %w", err)
 	}
 	return cfg, nil
+}
+
+// DefaultSyncCron syncs every night at 01:00 and every weekday at 17:00, in SYNC_TZ.
+const DefaultSyncCron = "0 1 * * *; 0 17 * * 1-5"
+
+// addSchedules registers fn once for each ";"-separated cron spec.
+func addSchedules(c *cron.Cron, specs string, fn func()) error {
+	for _, spec := range strings.Split(specs, ";") {
+		spec = strings.TrimSpace(spec)
+		if spec == "" {
+			continue
+		}
+		if _, err := c.AddFunc(spec, fn); err != nil {
+			return fmt.Errorf("parsing SYNC_CRON %q: %w", spec, err)
+		}
+	}
+	return nil
 }
 
 func envOr(key, def string) string {
@@ -103,12 +120,12 @@ func Run(ctx context.Context, cfg Config, logger *slog.Logger) error {
 	}
 
 	sched := cron.New(cron.WithLocation(cfg.TimeZone))
-	if _, err := sched.AddFunc(cfg.SyncCron, func() {
+	if err := addSchedules(sched, cfg.SyncCron, func() {
 		if _, err := runner.Start(base, base, snapshot.TriggerSchedule); err != nil {
 			logger.Warn("scheduled sync skipped", "err", err)
 		}
 	}); err != nil {
-		return fmt.Errorf("parsing SYNC_CRON %q: %w", cfg.SyncCron, err)
+		return err
 	}
 	sched.Start()
 	defer func() { <-sched.Stop().Done() }()

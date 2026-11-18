@@ -32,6 +32,7 @@ import { BackendError, clientFetch } from "@/lib/api"
 import type { SyncInfo } from "@/lib/types"
 import { currentMonth, type Range } from "@/lib/view"
 import { useDash } from "@/hooks/use-dash"
+import { cn } from "@/lib/utils"
 
 const wib = (iso: string) =>
   iso
@@ -44,6 +45,9 @@ const wib = (iso: string) =>
         minute: "2-digit",
       }) + " WIB"
     : ""
+
+const jakartaDay = (d: Date) =>
+  d.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" })
 
 const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
@@ -169,12 +173,7 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
     label = (
       <Tooltip>
         <TooltipTrigger
-          render={
-            <span
-              className="flex cursor-help items-center gap-1"
-              style={{ color: "var(--warn)" }}
-            />
-          }
+          render={<span className="flex cursor-help items-center gap-1" />}
         >
           <TriangleAlertIcon className="size-3.5" />
           Last sync failed {wib(sync.lastAttemptAt)}
@@ -187,9 +186,27 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
     )
   else if (sync?.lastSuccessAt) label = <>Synced {wib(sync.lastSuccessAt)}</>
 
+  // Green when the data is from today (WIB), red when it is older, failed or missing.
+  const fresh =
+    !!sync?.lastSuccessAt &&
+    sync.lastStatus !== "failed" &&
+    jakartaDay(new Date(sync.lastSuccessAt)) === jakartaDay(new Date())
+  const tone = sync?.running
+    ? "text-white"
+    : fresh
+      ? "text-green-400"
+      : "text-red-400"
+
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span className="hidden lg:inline">{label}</span>
+      <span
+        className={cn(
+          "hidden h-7 items-center rounded-md bg-black px-2.5 font-medium ring-1 ring-white/10 lg:inline-flex",
+          tone
+        )}
+      >
+        {label}
+      </span>
       {notice && <span style={{ color: "var(--warn)" }}>{notice}</span>}
       <Tooltip>
         <TooltipTrigger

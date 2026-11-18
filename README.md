@@ -17,7 +17,8 @@ open http://localhost:3300
 
 The first start copies the whole Linear workspace, which takes about 4 minutes
 for about 32,000 tasks. The page shows "first sync is still running" until it
-finishes. After that, a sync runs every night at 01:00 Asia/Jakarta. The
+finishes. After that, a sync runs every night at 01:00 and every weekday at
+17:00 Asia/Jakarta (`SYNC_CRON`, several schedules separated by `;`). The
 **Refresh** button runs one on demand, at most once every 15 minutes.
 
 | Service | What it does |
