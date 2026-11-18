@@ -8,7 +8,7 @@ option go_package = "linear-dashboard/backend/api/dashboard/v1;dashboardv1";
 
 // Scopes are encoded as one string everywhere:
 //   "all" | "segment:<KEY>" | "initiative:<ID>" | "project:<ID>"
-// Segment keys: B2B, B2G, B2BNG, B2C.
+// Segment keys: B2B, B2G, B2BNG, B2C, INTERNAL.
 // Dates are "YYYY-MM-DD", inclusive, Asia/Jakarta. Effort is in estimate points.
 
 service DashboardService {

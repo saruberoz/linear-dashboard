@@ -13,7 +13,7 @@ const (
 	StatusCanceled   = "canceled"
 )
 
-// Segment is one of the four business segments, in display order.
+// Segment is one of the business segments, in display order.
 type Segment struct {
 	Key     string
 	Label   string
@@ -26,6 +26,7 @@ var Segments = []Segment{
 	{Key: "B2G", Label: "B2G", aliases: []string{"b2g"}},
 	{Key: "B2BNG", Label: "B2B NG", aliases: []string{"b2bng", "b2bnongroup"}},
 	{Key: "B2C", Label: "B2C", aliases: []string{"b2c"}},
+	{Key: "INTERNAL", Label: "Internal PARKEE", aliases: []string{"internalparkee"}},
 }
 
 // Team is a Linear team; only its estimate setting matters here.

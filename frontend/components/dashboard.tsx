@@ -171,7 +171,7 @@ function HowToRead() {
           </li>
           <li>
             Segment shares cover tagged projects only. Projects with no B2B /
-            B2G / B2B NG / B2C label are left out.
+            B2G / B2B NG / B2C / Internal_PARKEE label are left out.
           </li>
           <li>
             A task open across several months counts in each of them, so monthly
@@ -404,7 +404,7 @@ function OverviewView({ d, range }: { d: T.OverviewResponse; range: Range }) {
   const { href } = useDash()
   return (
     <>
-      <Title meta="Share of estimated effort across the four segments. Multi-segment projects are split evenly.">
+      <Title meta="Share of estimated effort across the segments. Multi-segment projects are split evenly.">
         Segments overview
       </Title>
       <LabelWarningBanner w={d.warnings} />
@@ -784,7 +784,7 @@ function WarningsView({ d }: { d: T.WarningsResponse }) {
   return (
     <>
       <Title
-        meta={`${d.total} tasks in range carry a segment label (B2B, B2G, B2B NG or B2C, any case) on the task itself. Task labels never count; tagging the project is the fix.`}
+        meta={`${d.total} tasks in range carry a segment label (B2B, B2G, B2B NG, B2C or Internal_PARKEE, any case) on the task itself. Task labels never count; tagging the project is the fix.`}
       >
         <TriangleAlertIcon
           className="size-5"
@@ -1079,7 +1079,7 @@ export function Dashboard({
       body = (
         <ProjectListView
           title="Untagged projects"
-          meta="Projects active in this range with no B2B / B2G / B2B NG / B2C label. Not counted in segment shares. Largest effort first. Canceled projects are hidden unless picked."
+          meta="Projects active in this range with no B2B / B2G / B2B NG / B2C / Internal_PARKEE label. Not counted in segment shares. Largest effort first. Canceled projects are hidden unless picked."
           rows={view.data.projects}
           stateFilter
         />

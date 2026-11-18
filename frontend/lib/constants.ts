@@ -5,6 +5,7 @@ export const SEGMENTS = [
   { key: "B2G", label: "B2G", color: "var(--seg-b2g)" },
   { key: "B2BNG", label: "B2B NG", color: "var(--seg-b2bng)" },
   { key: "B2C", label: "B2C", color: "var(--seg-b2c)" },
+  { key: "INTERNAL", label: "Internal PARKEE", color: "var(--seg-internal)" },
 ] as const
 
 export const SEG: Record<string, (typeof SEGMENTS)[number]> =
@@ -116,6 +117,7 @@ const FIXED_COLORS: Record<string, Record<string, string>> = {
     B2G: "var(--seg-b2g)",
     B2BNG: "var(--seg-b2bng)",
     B2C: "var(--seg-b2c)",
+    INTERNAL: "var(--seg-internal)",
     _none: OTHER_COLOR,
   },
   status: {

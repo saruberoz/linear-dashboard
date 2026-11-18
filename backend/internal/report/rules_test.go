@@ -39,6 +39,9 @@ func TestSegmentOf(t *testing.T) {
 		{name: "non group hyphen", label: "b2b-ng", want: "B2BNG"},
 		{name: "non group underscore", label: "b2b_ng", want: "B2BNG"},
 		{name: "consumer", label: "B2C", want: "B2C"},
+		{name: "internal", label: "Internal_PARKEE", want: "INTERNAL"},
+		{name: "internal with space", label: "internal parkee", want: "INTERNAL"},
+		{name: "internal alone", label: "Internal", want: ""},
 		{name: "near miss", label: "B2BX", want: ""},
 		{name: "unrelated", label: "Bug", want: ""},
 	}
