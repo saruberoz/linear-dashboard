@@ -48,6 +48,19 @@ service DashboardService {
   rpc ListInitiativesWithoutProjects(ListInitiativesWithoutProjectsRequest) returns (ListInitiativesWithoutProjectsResponse) {
     option (google.api.http) = {get: "/v1/initiatives-without-projects"};
   }
+  // Open tasks in range with no project, grouped by assignee.
+  rpc ListTasksWithoutProject(ListTasksWithoutProjectRequest) returns (ListTasksWithoutProjectResponse) {
+    option (google.api.http) = {get: "/v1/tasks-without-project"};
+  }
+  // Projects active in the range without a start or target date, and open
+  // [W]/[WS] initiatives without a target date (initiatives are not date-filtered).
+  rpc ListMissingTimeline(ListMissingTimelineRequest) returns (ListMissingTimelineResponse) {
+    option (google.api.http) = {get: "/v1/missing-timeline"};
+  }
+  // Projects with no tasks at all. Not date-filtered: they have no tasks.
+  rpc ListProjectsWithoutTasks(ListProjectsWithoutTasksRequest) returns (ListProjectsWithoutTasksResponse) {
+    option (google.api.http) = {get: "/v1/projects-without-tasks"};
+  }
 }
 
 service SyncService {
@@ -134,6 +147,8 @@ message ProjectRow {
   int32 tasks = 10;
   int32 missing = 11;
   repeated string hidden_initiatives = 12; // names of non-[W]/[WS] initiatives (sprints, buckets) it belongs to
+  string start_date = 13; // YYYY-MM-DD, "" when not set in Linear
+  string target_date = 14; // YYYY-MM-DD, "" when not set in Linear
 }
 
 message TaskRow {
@@ -201,6 +216,9 @@ message GetMenuResponse {
   SyncInfo sync = 5;
   int32 no_initiative_count = 6;
   int32 empty_initiative_count = 7;
+  int32 no_project_task_count = 8;
+  int32 missing_timeline_count = 9; // canceled projects left out
+  int32 empty_project_count = 10; // canceled projects left out
 }
 
 // ---------- overview ----------
@@ -376,6 +394,43 @@ message EmptyInitiative {
 
 message ListInitiativesWithoutProjectsResponse {
   repeated EmptyInitiative initiatives = 1; // [W]/[WS] first, then by name
+}
+
+message ListTasksWithoutProjectRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message ListTasksWithoutProjectResponse {
+  int32 total = 1;
+  repeated AssigneeGroup groups = 2; // largest group first
+}
+
+message ListMissingTimelineRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message TimelineInitiative {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  string status = 4;
+  int32 projects = 5; // linked projects, any state
+}
+
+message ListMissingTimelineResponse {
+  repeated ProjectRow projects = 1; // largest effort first; canceled ones included for the page's state filter
+  repeated TimelineInitiative initiatives = 2; // by name
+}
+
+message ListProjectsWithoutTasksRequest {
+  string from = 1; // only used for the row shape; the list ignores the range
+  string to = 2;
+}
+
+message ListProjectsWithoutTasksResponse {
+  repeated ProjectRow projects = 1; // by name; canceled ones included for the page's state filter
 }
 
 // ---------- sync ----------

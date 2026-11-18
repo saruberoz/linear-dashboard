@@ -183,6 +183,30 @@ func (h *Dashboard) ListInitiativesWithoutProjects(_ context.Context, _ *pb.List
 	return ds.InitiativesWithoutProjects(), nil
 }
 
+func (h *Dashboard) ListTasksWithoutProject(_ context.Context, req *pb.ListTasksWithoutProjectRequest) (*pb.ListTasksWithoutProjectResponse, error) {
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	if err != nil {
+		return nil, err
+	}
+	return ds.TasksWithoutProject(r), nil
+}
+
+func (h *Dashboard) ListMissingTimeline(_ context.Context, req *pb.ListMissingTimelineRequest) (*pb.ListMissingTimelineResponse, error) {
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	if err != nil {
+		return nil, err
+	}
+	return ds.MissingTimeline(r), nil
+}
+
+func (h *Dashboard) ListProjectsWithoutTasks(_ context.Context, req *pb.ListProjectsWithoutTasksRequest) (*pb.ListProjectsWithoutTasksResponse, error) {
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	if err != nil {
+		return nil, err
+	}
+	return ds.ProjectsWithoutTasks(r), nil
+}
+
 // StartSync replies 409 or 429 before any work starts; otherwise the sync runs
 // in the background and the reply reports it as running.
 func (h *Dashboard) StartSync(ctx context.Context, _ *pb.StartSyncRequest) (*pb.StartSyncResponse, error) {

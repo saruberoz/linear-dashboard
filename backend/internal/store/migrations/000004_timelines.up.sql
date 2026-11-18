@@ -1,0 +1,3 @@
+ALTER TABLE projects ADD COLUMN start_date STRING NULL;
+ALTER TABLE projects ADD COLUMN target_date STRING NULL;
+ALTER TABLE initiatives ADD COLUMN target_date STRING NULL;

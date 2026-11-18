@@ -20,7 +20,8 @@ get() { curl -sf "$API/$1"; }
 near() { jq -n --argjson a "$1" --argjson b "$2" '(($a - $b) | fabs) <= 0.1'; }
 
 for p in "menu?$R" "overview?$R" "segments/B2B?$R" "missing-estimates?$R" "missing-estimates?all=true&$R" \
-  "warnings/segment-labels?$R" "untagged-projects?$R" "projects-without-initiative?$R" "initiatives-without-projects" "sync"; do
+  "warnings/segment-labels?$R" "untagged-projects?$R" "projects-without-initiative?$R" "initiatives-without-projects" \
+  "tasks-without-project?$R" "missing-timeline?$R" "projects-without-tasks?$R" "sync"; do
   code=$(curl -s -o /dev/null -w '%{http_code}' "$API/$p")
   check "GET /v1/$p -> $code" "$([ "$code" = 200 ] && echo true || echo false)"
 done

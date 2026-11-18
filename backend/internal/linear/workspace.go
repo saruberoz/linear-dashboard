@@ -29,10 +29,10 @@ const (
 	projectLabelsQuery = `query($after: String) { projectLabels(first: 250, after: $after, includeArchived: true) {
   pageInfo { hasNextPage endCursor } nodes { id name parent { name } } } }`
 	initiativesQuery = `query($after: String) { initiatives(first: 50, after: $after, includeArchived: true) {
-  pageInfo { hasNextPage endCursor } nodes { id name status url createdAt } } }`
+  pageInfo { hasNextPage endCursor } nodes { id name status url createdAt targetDate } } }`
 	projectsQuery = `query($after: String) { projects(first: 50, after: $after, includeArchived: true) {
   pageInfo { hasNextPage endCursor }
-  nodes { id name state url createdAt labels(first: 20) { nodes { id } } initiatives(first: 20) { nodes { id } } } } }`
+  nodes { id name state url createdAt startDate targetDate labels(first: 20) { nodes { id } } initiatives(first: 20) { nodes { id } } } } }`
 	issuesQuery = `query($after: String) { issues(first: 100, after: $after, includeArchived: true) {
   pageInfo { hasNextPage endCursor }
   nodes { id identifier title url estimate priority createdAt startedAt completedAt canceledAt archivedAt startedTriageAt triagedAt trashed
@@ -115,9 +115,11 @@ func (c *Client) FetchWorkspace(ctx context.Context, progress func(int)) (*Works
 			return paginate(ctx, c, initiativesQuery, progress, func(ns []struct {
 				ID, Name, Status, URL string
 				CreatedAt             time.Time `json:"createdAt"`
+				TargetDate            *string   `json:"targetDate"`
 			}) {
 				for _, n := range ns {
-					ws.Initiatives = append(ws.Initiatives, report.Initiative{ID: n.ID, Name: n.Name, Status: n.Status, URL: n.URL, CreatedAt: n.CreatedAt})
+					ws.Initiatives = append(ws.Initiatives, report.Initiative{ID: n.ID, Name: n.Name, Status: n.Status, URL: n.URL, CreatedAt: n.CreatedAt,
+						TargetDate: deref(n.TargetDate)})
 				}
 			})
 		}},
@@ -125,12 +127,15 @@ func (c *Client) FetchWorkspace(ctx context.Context, progress func(int)) (*Works
 			return paginate(ctx, c, projectsQuery, progress, func(ns []struct {
 				ID, Name, State, URL string
 				CreatedAt            time.Time `json:"createdAt"`
+				StartDate            *string   `json:"startDate"`
+				TargetDate           *string   `json:"targetDate"`
 				Labels               struct{ Nodes []idRef }
 				Initiatives          struct{ Nodes []idRef }
 			}) {
 				for _, n := range ns {
 					ws.Projects = append(ws.Projects, report.Project{ID: n.ID, Name: n.Name, State: n.State, URL: n.URL,
-						CreatedAt: n.CreatedAt, LabelIDs: ids(n.Labels.Nodes), InitiativeIDs: ids(n.Initiatives.Nodes)})
+						CreatedAt: n.CreatedAt, LabelIDs: ids(n.Labels.Nodes), InitiativeIDs: ids(n.Initiatives.Nodes),
+						StartDate: deref(n.StartDate), TargetDate: deref(n.TargetDate)})
 				}
 			})
 		}},
@@ -184,6 +189,13 @@ func toTask(n issueNode) report.Task {
 		t.ParentID = n.Parent.ID
 	}
 	return t
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func ids(refs []idRef) []string {

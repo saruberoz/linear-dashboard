@@ -107,7 +107,7 @@ func (d *Dataset) scopeProjects(sc Scope, r Range) ([]*Project, error) {
 // projectRow summarizes one project. segmentKey, when set, fills share_pts with
 // the project's 1/N share for that segment.
 func (d *Dataset) projectRow(p *Project, r Range, segmentKey string) *pb.ProjectRow {
-	row := &pb.ProjectRow{Id: p.ID, Name: p.Name, Url: p.URL, State: p.State,
+	row := &pb.ProjectRow{Id: p.ID, Name: p.Name, Url: p.URL, State: p.State, StartDate: p.StartDate, TargetDate: p.TargetDate,
 		Segments: nonNil(p.Segments), Status: &pb.StatusSplit{}}
 	for _, t := range d.TasksInRange(p.ID, r) {
 		if t.MissingEstimate {
@@ -146,9 +146,12 @@ func (d *Dataset) Menu(r Range) *pb.GetMenuResponse {
 	missing, _ := d.missingTasks(Scope{Kind: "all"}, r, false)
 	res.MissingCount = int32(len(missing))
 	res.WarningCount = int32(len(d.warningTasks(r)))
-	res.UntaggedCount = d.untaggedCount(r)
+	res.UntaggedCount = notCanceled(d.untaggedProjects(r))
 	res.NoInitiativeCount = int32(len(d.projectsWithoutInitiative(r)))
 	res.EmptyInitiativeCount = int32(len(d.initiativesWithoutProjects()))
+	res.NoProjectTaskCount = int32(len(d.tasksWithoutProject(r)))
+	res.MissingTimelineCount = int32(len(d.initiativesWithoutTarget())) + notCanceled(d.projectsWithoutTimeline(r))
+	res.EmptyProjectCount = notCanceled(d.projectsWithoutTasks())
 	return res
 }
 
@@ -236,7 +239,7 @@ func (d *Dataset) Overview(r Range) *pb.GetOverviewResponse {
 			res.Warnings.Uncounted++
 		}
 	}
-	res.UntaggedProjects = d.untaggedCount(r)
+	res.UntaggedProjects = notCanceled(d.untaggedProjects(r))
 	return res
 }
 
@@ -396,7 +399,13 @@ func (d *Dataset) MissingEstimates(scope string, all bool, r Range) (*pb.ListMis
 	if err != nil {
 		return nil, err
 	}
-	res := &pb.ListMissingEstimatesResponse{ScopeTitle: d.scopeTitle(sc, all), Total: int32(len(tasks))}
+	return &pb.ListMissingEstimatesResponse{ScopeTitle: d.scopeTitle(sc, all), Total: int32(len(tasks)),
+		Groups: d.byAssignee(tasks)}, nil
+}
+
+// byAssignee groups tasks by assignee, oldest task first within a group and the
+// largest group first.
+func (d *Dataset) byAssignee(tasks []*Task) []*pb.AssigneeGroup {
 	groups := map[string]*pb.AssigneeGroup{}
 	for _, t := range tasks {
 		id := assigneeKey(t)
@@ -411,17 +420,18 @@ func (d *Dataset) MissingEstimates(scope string, all bool, r Range) (*pb.ListMis
 		}
 		g.Tasks = append(g.Tasks, d.taskRow(t, 0, 0))
 	}
+	var out []*pb.AssigneeGroup
 	for _, g := range groups {
 		sort.Slice(g.Tasks, func(i, j int) bool { return g.Tasks[i].CreatedAt < g.Tasks[j].CreatedAt })
-		res.Groups = append(res.Groups, g)
+		out = append(out, g)
 	}
-	sort.Slice(res.Groups, func(i, j int) bool {
-		if len(res.Groups[i].Tasks) != len(res.Groups[j].Tasks) {
-			return len(res.Groups[i].Tasks) > len(res.Groups[j].Tasks)
+	sort.Slice(out, func(i, j int) bool {
+		if len(out[i].Tasks) != len(out[j].Tasks) {
+			return len(out[i].Tasks) > len(out[j].Tasks)
 		}
-		return res.Groups[i].Assignee < res.Groups[j].Assignee
+		return out[i].Assignee < out[j].Assignee
 	})
-	return res, nil
+	return out
 }
 
 func (d *Dataset) scopeTitle(sc Scope, all bool) string {
@@ -499,18 +509,6 @@ func (d *Dataset) untaggedProjects(r Range) []*Project {
 	}
 	sortProjects(out)
 	return out
-}
-
-// untaggedCount counts untagged projects that are not canceled, matching the
-// untagged page, which hides canceled projects by default.
-func (d *Dataset) untaggedCount(r Range) int32 {
-	var n int32
-	for _, p := range d.untaggedProjects(r) {
-		if p.State != "canceled" {
-			n++
-		}
-	}
-	return n
 }
 
 // UntaggedProjects lists visible projects without a segment label, largest effort first.

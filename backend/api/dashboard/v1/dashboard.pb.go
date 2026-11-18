@@ -568,6 +568,8 @@ type ProjectRow struct {
 	Tasks             int32                  `protobuf:"varint,10,opt,name=tasks,proto3" json:"tasks,omitempty"`
 	Missing           int32                  `protobuf:"varint,11,opt,name=missing,proto3" json:"missing,omitempty"`
 	HiddenInitiatives []string               `protobuf:"bytes,12,rep,name=hidden_initiatives,json=hiddenInitiatives,proto3" json:"hidden_initiatives,omitempty"` // names of non-[W]/[WS] initiatives (sprints, buckets) it belongs to
+	StartDate         string                 `protobuf:"bytes,13,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`                         // YYYY-MM-DD, "" when not set in Linear
+	TargetDate        string                 `protobuf:"bytes,14,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"`                      // YYYY-MM-DD, "" when not set in Linear
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -684,6 +686,20 @@ func (x *ProjectRow) GetHiddenInitiatives() []string {
 		return x.HiddenInitiatives
 	}
 	return nil
+}
+
+func (x *ProjectRow) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *ProjectRow) GetTargetDate() string {
+	if x != nil {
+		return x.TargetDate
+	}
+	return ""
 }
 
 type TaskRow struct {
@@ -1207,6 +1223,9 @@ type GetMenuResponse struct {
 	Sync                 *SyncInfo              `protobuf:"bytes,5,opt,name=sync,proto3" json:"sync,omitempty"`
 	NoInitiativeCount    int32                  `protobuf:"varint,6,opt,name=no_initiative_count,json=noInitiativeCount,proto3" json:"no_initiative_count,omitempty"`
 	EmptyInitiativeCount int32                  `protobuf:"varint,7,opt,name=empty_initiative_count,json=emptyInitiativeCount,proto3" json:"empty_initiative_count,omitempty"`
+	NoProjectTaskCount   int32                  `protobuf:"varint,8,opt,name=no_project_task_count,json=noProjectTaskCount,proto3" json:"no_project_task_count,omitempty"`
+	MissingTimelineCount int32                  `protobuf:"varint,9,opt,name=missing_timeline_count,json=missingTimelineCount,proto3" json:"missing_timeline_count,omitempty"` // canceled projects left out
+	EmptyProjectCount    int32                  `protobuf:"varint,10,opt,name=empty_project_count,json=emptyProjectCount,proto3" json:"empty_project_count,omitempty"`         // canceled projects left out
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1286,6 +1305,27 @@ func (x *GetMenuResponse) GetNoInitiativeCount() int32 {
 func (x *GetMenuResponse) GetEmptyInitiativeCount() int32 {
 	if x != nil {
 		return x.EmptyInitiativeCount
+	}
+	return 0
+}
+
+func (x *GetMenuResponse) GetNoProjectTaskCount() int32 {
+	if x != nil {
+		return x.NoProjectTaskCount
+	}
+	return 0
+}
+
+func (x *GetMenuResponse) GetMissingTimelineCount() int32 {
+	if x != nil {
+		return x.MissingTimelineCount
+	}
+	return 0
+}
+
+func (x *GetMenuResponse) GetEmptyProjectCount() int32 {
+	if x != nil {
+		return x.EmptyProjectCount
 	}
 	return 0
 }
@@ -2914,6 +2954,386 @@ func (x *ListInitiativesWithoutProjectsResponse) GetInitiatives() []*EmptyInitia
 	return nil
 }
 
+type ListTasksWithoutProjectRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	From          string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTasksWithoutProjectRequest) Reset() {
+	*x = ListTasksWithoutProjectRequest{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTasksWithoutProjectRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTasksWithoutProjectRequest) ProtoMessage() {}
+
+func (x *ListTasksWithoutProjectRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTasksWithoutProjectRequest.ProtoReflect.Descriptor instead.
+func (*ListTasksWithoutProjectRequest) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *ListTasksWithoutProjectRequest) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *ListTasksWithoutProjectRequest) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type ListTasksWithoutProjectResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Total         int32                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	Groups        []*AssigneeGroup       `protobuf:"bytes,2,rep,name=groups,proto3" json:"groups,omitempty"` // largest group first
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTasksWithoutProjectResponse) Reset() {
+	*x = ListTasksWithoutProjectResponse{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTasksWithoutProjectResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTasksWithoutProjectResponse) ProtoMessage() {}
+
+func (x *ListTasksWithoutProjectResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTasksWithoutProjectResponse.ProtoReflect.Descriptor instead.
+func (*ListTasksWithoutProjectResponse) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *ListTasksWithoutProjectResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListTasksWithoutProjectResponse) GetGroups() []*AssigneeGroup {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+type ListMissingTimelineRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	From          string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMissingTimelineRequest) Reset() {
+	*x = ListMissingTimelineRequest{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMissingTimelineRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMissingTimelineRequest) ProtoMessage() {}
+
+func (x *ListMissingTimelineRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMissingTimelineRequest.ProtoReflect.Descriptor instead.
+func (*ListMissingTimelineRequest) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *ListMissingTimelineRequest) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *ListMissingTimelineRequest) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type TimelineInitiative struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Url           string                 `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	Projects      int32                  `protobuf:"varint,5,opt,name=projects,proto3" json:"projects,omitempty"` // linked projects, any state
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TimelineInitiative) Reset() {
+	*x = TimelineInitiative{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TimelineInitiative) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TimelineInitiative) ProtoMessage() {}
+
+func (x *TimelineInitiative) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TimelineInitiative.ProtoReflect.Descriptor instead.
+func (*TimelineInitiative) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *TimelineInitiative) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TimelineInitiative) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *TimelineInitiative) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *TimelineInitiative) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *TimelineInitiative) GetProjects() int32 {
+	if x != nil {
+		return x.Projects
+	}
+	return 0
+}
+
+type ListMissingTimelineResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Projects      []*ProjectRow          `protobuf:"bytes,1,rep,name=projects,proto3" json:"projects,omitempty"`       // largest effort first; canceled ones included for the page's state filter
+	Initiatives   []*TimelineInitiative  `protobuf:"bytes,2,rep,name=initiatives,proto3" json:"initiatives,omitempty"` // by name
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMissingTimelineResponse) Reset() {
+	*x = ListMissingTimelineResponse{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMissingTimelineResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMissingTimelineResponse) ProtoMessage() {}
+
+func (x *ListMissingTimelineResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMissingTimelineResponse.ProtoReflect.Descriptor instead.
+func (*ListMissingTimelineResponse) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ListMissingTimelineResponse) GetProjects() []*ProjectRow {
+	if x != nil {
+		return x.Projects
+	}
+	return nil
+}
+
+func (x *ListMissingTimelineResponse) GetInitiatives() []*TimelineInitiative {
+	if x != nil {
+		return x.Initiatives
+	}
+	return nil
+}
+
+type ListProjectsWithoutTasksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	From          string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"` // only used for the row shape; the list ignores the range
+	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProjectsWithoutTasksRequest) Reset() {
+	*x = ListProjectsWithoutTasksRequest{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProjectsWithoutTasksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProjectsWithoutTasksRequest) ProtoMessage() {}
+
+func (x *ListProjectsWithoutTasksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProjectsWithoutTasksRequest.ProtoReflect.Descriptor instead.
+func (*ListProjectsWithoutTasksRequest) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *ListProjectsWithoutTasksRequest) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *ListProjectsWithoutTasksRequest) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type ListProjectsWithoutTasksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Projects      []*ProjectRow          `protobuf:"bytes,1,rep,name=projects,proto3" json:"projects,omitempty"` // by name; canceled ones included for the page's state filter
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProjectsWithoutTasksResponse) Reset() {
+	*x = ListProjectsWithoutTasksResponse{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProjectsWithoutTasksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProjectsWithoutTasksResponse) ProtoMessage() {}
+
+func (x *ListProjectsWithoutTasksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProjectsWithoutTasksResponse.ProtoReflect.Descriptor instead.
+func (*ListProjectsWithoutTasksResponse) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *ListProjectsWithoutTasksResponse) GetProjects() []*ProjectRow {
+	if x != nil {
+		return x.Projects
+	}
+	return nil
+}
+
 type StartSyncRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2922,7 +3342,7 @@ type StartSyncRequest struct {
 
 func (x *StartSyncRequest) Reset() {
 	*x = StartSyncRequest{}
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[41]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2934,7 +3354,7 @@ func (x *StartSyncRequest) String() string {
 func (*StartSyncRequest) ProtoMessage() {}
 
 func (x *StartSyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[41]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2947,7 +3367,7 @@ func (x *StartSyncRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartSyncRequest.ProtoReflect.Descriptor instead.
 func (*StartSyncRequest) Descriptor() ([]byte, []int) {
-	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{41}
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{48}
 }
 
 type StartSyncResponse struct {
@@ -2959,7 +3379,7 @@ type StartSyncResponse struct {
 
 func (x *StartSyncResponse) Reset() {
 	*x = StartSyncResponse{}
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[42]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2971,7 +3391,7 @@ func (x *StartSyncResponse) String() string {
 func (*StartSyncResponse) ProtoMessage() {}
 
 func (x *StartSyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[42]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2984,7 +3404,7 @@ func (x *StartSyncResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartSyncResponse.ProtoReflect.Descriptor instead.
 func (*StartSyncResponse) Descriptor() ([]byte, []int) {
-	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{42}
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *StartSyncResponse) GetSync() *SyncInfo {
@@ -3002,7 +3422,7 @@ type GetSyncStatusRequest struct {
 
 func (x *GetSyncStatusRequest) Reset() {
 	*x = GetSyncStatusRequest{}
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[43]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3014,7 +3434,7 @@ func (x *GetSyncStatusRequest) String() string {
 func (*GetSyncStatusRequest) ProtoMessage() {}
 
 func (x *GetSyncStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[43]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3027,7 +3447,7 @@ func (x *GetSyncStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSyncStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetSyncStatusRequest) Descriptor() ([]byte, []int) {
-	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{43}
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{50}
 }
 
 type GetSyncStatusResponse struct {
@@ -3039,7 +3459,7 @@ type GetSyncStatusResponse struct {
 
 func (x *GetSyncStatusResponse) Reset() {
 	*x = GetSyncStatusResponse{}
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[44]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3051,7 +3471,7 @@ func (x *GetSyncStatusResponse) String() string {
 func (*GetSyncStatusResponse) ProtoMessage() {}
 
 func (x *GetSyncStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dashboard_v1_dashboard_proto_msgTypes[44]
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3064,7 +3484,7 @@ func (x *GetSyncStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSyncStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetSyncStatusResponse) Descriptor() ([]byte, []int) {
-	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{44}
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *GetSyncStatusResponse) GetSync() *SyncInfo {
@@ -3131,7 +3551,7 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\vtasks_total\x18\x06 \x01(\x05R\n" +
 	"tasksTotal\x12#\n" +
 	"\rtasks_missing\x18\a \x01(\x05R\ftasksMissing\x12B\n" +
-	"\fcontributors\x18\b \x03(\v2\x1e.dashboard.v1.ContributorTableR\fcontributors\"\xd0\x02\n" +
+	"\fcontributors\x18\b \x03(\v2\x1e.dashboard.v1.ContributorTableR\fcontributors\"\x90\x03\n" +
 	"\n" +
 	"ProjectRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -3146,7 +3566,11 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x05tasks\x18\n" +
 	" \x01(\x05R\x05tasks\x12\x18\n" +
 	"\amissing\x18\v \x01(\x05R\amissing\x12-\n" +
-	"\x12hidden_initiatives\x18\f \x03(\tR\x11hiddenInitiatives\"\x87\x05\n" +
+	"\x12hidden_initiatives\x18\f \x03(\tR\x11hiddenInitiatives\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\r \x01(\tR\tstartDate\x12\x1f\n" +
+	"\vtarget_date\x18\x0e \x01(\tR\n" +
+	"targetDate\"\x87\x05\n" +
 	"\aTaskRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1e\n" +
 	"\n" +
@@ -3197,7 +3621,7 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12#\n" +
 	"\rproject_count\x18\x03 \x01(\x05R\fprojectCount\x12>\n" +
-	"\vinitiatives\x18\x04 \x03(\v2\x1c.dashboard.v1.MenuInitiativeR\vinitiatives\"\xcb\x02\n" +
+	"\vinitiatives\x18\x04 \x03(\v2\x1c.dashboard.v1.MenuInitiativeR\vinitiatives\"\xe4\x03\n" +
 	"\x0fGetMenuResponse\x125\n" +
 	"\bsegments\x18\x01 \x03(\v2\x19.dashboard.v1.MenuSegmentR\bsegments\x12#\n" +
 	"\rmissing_count\x18\x02 \x01(\x05R\fmissingCount\x12#\n" +
@@ -3205,7 +3629,11 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x0euntagged_count\x18\x04 \x01(\x05R\runtaggedCount\x12*\n" +
 	"\x04sync\x18\x05 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync\x12.\n" +
 	"\x13no_initiative_count\x18\x06 \x01(\x05R\x11noInitiativeCount\x124\n" +
-	"\x16empty_initiative_count\x18\a \x01(\x05R\x14emptyInitiativeCount\"8\n" +
+	"\x16empty_initiative_count\x18\a \x01(\x05R\x14emptyInitiativeCount\x121\n" +
+	"\x15no_project_task_count\x18\b \x01(\x05R\x12noProjectTaskCount\x124\n" +
+	"\x16missing_timeline_count\x18\t \x01(\x05R\x14missingTimelineCount\x12.\n" +
+	"\x13empty_project_count\x18\n" +
+	" \x01(\x05R\x11emptyProjectCount\"8\n" +
 	"\x12GetOverviewRequest\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
 	"\x02to\x18\x02 \x01(\tR\x02to\"\xc1\x01\n" +
@@ -3325,13 +3753,36 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\"i\n" +
 	"&ListInitiativesWithoutProjectsResponse\x12?\n" +
-	"\vinitiatives\x18\x01 \x03(\v2\x1d.dashboard.v1.EmptyInitiativeR\vinitiatives\"\x12\n" +
+	"\vinitiatives\x18\x01 \x03(\v2\x1d.dashboard.v1.EmptyInitiativeR\vinitiatives\"D\n" +
+	"\x1eListTasksWithoutProjectRequest\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\"l\n" +
+	"\x1fListTasksWithoutProjectResponse\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x05R\x05total\x123\n" +
+	"\x06groups\x18\x02 \x03(\v2\x1b.dashboard.v1.AssigneeGroupR\x06groups\"@\n" +
+	"\x1aListMissingTimelineRequest\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\"~\n" +
+	"\x12TimelineInitiative\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1a\n" +
+	"\bprojects\x18\x05 \x01(\x05R\bprojects\"\x97\x01\n" +
+	"\x1bListMissingTimelineResponse\x124\n" +
+	"\bprojects\x18\x01 \x03(\v2\x18.dashboard.v1.ProjectRowR\bprojects\x12B\n" +
+	"\vinitiatives\x18\x02 \x03(\v2 .dashboard.v1.TimelineInitiativeR\vinitiatives\"E\n" +
+	"\x1fListProjectsWithoutTasksRequest\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\"X\n" +
+	" ListProjectsWithoutTasksResponse\x124\n" +
+	"\bprojects\x18\x01 \x03(\v2\x18.dashboard.v1.ProjectRowR\bprojects\"\x12\n" +
 	"\x10StartSyncRequest\"?\n" +
 	"\x11StartSyncResponse\x12*\n" +
 	"\x04sync\x18\x01 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync\"\x16\n" +
 	"\x14GetSyncStatusRequest\"C\n" +
 	"\x15GetSyncStatusResponse\x12*\n" +
-	"\x04sync\x18\x01 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync2\xb7\v\n" +
+	"\x04sync\x18\x01 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync2\xfe\x0e\n" +
 	"\x10DashboardService\x12X\n" +
 	"\aGetMenu\x12\x1c.dashboard.v1.GetMenuRequest\x1a\x1d.dashboard.v1.GetMenuResponse\"\x10\x82\xd3\xe4\x93\x02\n" +
 	"\x12\b/v1/menu\x12h\n" +
@@ -3346,7 +3797,10 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x18ListSegmentLabelWarnings\x12-.dashboard.v1.ListSegmentLabelWarningsRequest\x1a..dashboard.v1.ListSegmentLabelWarningsResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/v1/warnings/segment-labels\x12\x8c\x01\n" +
 	"\x14ListUntaggedProjects\x12).dashboard.v1.ListUntaggedProjectsRequest\x1a*.dashboard.v1.ListUntaggedProjectsResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/v1/untagged-projects\x12\xb1\x01\n" +
 	"\x1dListProjectsWithoutInitiative\x122.dashboard.v1.ListProjectsWithoutInitiativeRequest\x1a3.dashboard.v1.ListProjectsWithoutInitiativeResponse\"'\x82\xd3\xe4\x93\x02!\x12\x1f/v1/projects-without-initiative\x12\xb5\x01\n" +
-	"\x1eListInitiativesWithoutProjects\x123.dashboard.v1.ListInitiativesWithoutProjectsRequest\x1a4.dashboard.v1.ListInitiativesWithoutProjectsResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /v1/initiatives-without-projects2\xdc\x01\n" +
+	"\x1eListInitiativesWithoutProjects\x123.dashboard.v1.ListInitiativesWithoutProjectsRequest\x1a4.dashboard.v1.ListInitiativesWithoutProjectsResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /v1/initiatives-without-projects\x12\x99\x01\n" +
+	"\x17ListTasksWithoutProject\x12,.dashboard.v1.ListTasksWithoutProjectRequest\x1a-.dashboard.v1.ListTasksWithoutProjectResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/v1/tasks-without-project\x12\x88\x01\n" +
+	"\x13ListMissingTimeline\x12(.dashboard.v1.ListMissingTimelineRequest\x1a).dashboard.v1.ListMissingTimelineResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/v1/missing-timeline\x12\x9d\x01\n" +
+	"\x18ListProjectsWithoutTasks\x12-.dashboard.v1.ListProjectsWithoutTasksRequest\x1a..dashboard.v1.ListProjectsWithoutTasksResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/v1/projects-without-tasks2\xdc\x01\n" +
 	"\vSyncService\x12a\n" +
 	"\tStartSync\x12\x1e.dashboard.v1.StartSyncRequest\x1a\x1f.dashboard.v1.StartSyncResponse\"\x13\x82\xd3\xe4\x93\x02\r:\x01*\"\b/v1/sync\x12j\n" +
 	"\rGetSyncStatus\x12\".dashboard.v1.GetSyncStatusRequest\x1a#.dashboard.v1.GetSyncStatusResponse\"\x10\x82\xd3\xe4\x93\x02\n" +
@@ -3365,7 +3819,7 @@ func file_dashboard_v1_dashboard_proto_rawDescGZIP() []byte {
 	return file_dashboard_v1_dashboard_proto_rawDescData
 }
 
-var file_dashboard_v1_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
+var file_dashboard_v1_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
 var file_dashboard_v1_dashboard_proto_goTypes = []any{
 	(*SyncInfo)(nil),                               // 0: dashboard.v1.SyncInfo
 	(*StatusSplit)(nil),                            // 1: dashboard.v1.StatusSplit
@@ -3408,14 +3862,21 @@ var file_dashboard_v1_dashboard_proto_goTypes = []any{
 	(*ListInitiativesWithoutProjectsRequest)(nil),  // 38: dashboard.v1.ListInitiativesWithoutProjectsRequest
 	(*EmptyInitiative)(nil),                        // 39: dashboard.v1.EmptyInitiative
 	(*ListInitiativesWithoutProjectsResponse)(nil), // 40: dashboard.v1.ListInitiativesWithoutProjectsResponse
-	(*StartSyncRequest)(nil),                       // 41: dashboard.v1.StartSyncRequest
-	(*StartSyncResponse)(nil),                      // 42: dashboard.v1.StartSyncResponse
-	(*GetSyncStatusRequest)(nil),                   // 43: dashboard.v1.GetSyncStatusRequest
-	(*GetSyncStatusResponse)(nil),                  // 44: dashboard.v1.GetSyncStatusResponse
-	nil,                                            // 45: dashboard.v1.ContributorRow.CellsEntry
+	(*ListTasksWithoutProjectRequest)(nil),         // 41: dashboard.v1.ListTasksWithoutProjectRequest
+	(*ListTasksWithoutProjectResponse)(nil),        // 42: dashboard.v1.ListTasksWithoutProjectResponse
+	(*ListMissingTimelineRequest)(nil),             // 43: dashboard.v1.ListMissingTimelineRequest
+	(*TimelineInitiative)(nil),                     // 44: dashboard.v1.TimelineInitiative
+	(*ListMissingTimelineResponse)(nil),            // 45: dashboard.v1.ListMissingTimelineResponse
+	(*ListProjectsWithoutTasksRequest)(nil),        // 46: dashboard.v1.ListProjectsWithoutTasksRequest
+	(*ListProjectsWithoutTasksResponse)(nil),       // 47: dashboard.v1.ListProjectsWithoutTasksResponse
+	(*StartSyncRequest)(nil),                       // 48: dashboard.v1.StartSyncRequest
+	(*StartSyncResponse)(nil),                      // 49: dashboard.v1.StartSyncResponse
+	(*GetSyncStatusRequest)(nil),                   // 50: dashboard.v1.GetSyncStatusRequest
+	(*GetSyncStatusResponse)(nil),                  // 51: dashboard.v1.GetSyncStatusResponse
+	nil,                                            // 52: dashboard.v1.ContributorRow.CellsEntry
 }
 var file_dashboard_v1_dashboard_proto_depIdxs = []int32{
-	45, // 0: dashboard.v1.ContributorRow.cells:type_name -> dashboard.v1.ContributorRow.CellsEntry
+	52, // 0: dashboard.v1.ContributorRow.cells:type_name -> dashboard.v1.ContributorRow.CellsEntry
 	2,  // 1: dashboard.v1.ContributorTable.columns:type_name -> dashboard.v1.Breakdown
 	4,  // 2: dashboard.v1.ContributorTable.rows:type_name -> dashboard.v1.ContributorRow
 	1,  // 3: dashboard.v1.Summary.by_status:type_name -> dashboard.v1.StatusSplit
@@ -3449,40 +3910,50 @@ var file_dashboard_v1_dashboard_proto_depIdxs = []int32{
 	7,  // 31: dashboard.v1.ListUntaggedProjectsResponse.projects:type_name -> dashboard.v1.ProjectRow
 	7,  // 32: dashboard.v1.ListProjectsWithoutInitiativeResponse.projects:type_name -> dashboard.v1.ProjectRow
 	39, // 33: dashboard.v1.ListInitiativesWithoutProjectsResponse.initiatives:type_name -> dashboard.v1.EmptyInitiative
-	0,  // 34: dashboard.v1.StartSyncResponse.sync:type_name -> dashboard.v1.SyncInfo
-	0,  // 35: dashboard.v1.GetSyncStatusResponse.sync:type_name -> dashboard.v1.SyncInfo
-	3,  // 36: dashboard.v1.ContributorRow.CellsEntry.value:type_name -> dashboard.v1.ContributorCell
-	10, // 37: dashboard.v1.DashboardService.GetMenu:input_type -> dashboard.v1.GetMenuRequest
-	15, // 38: dashboard.v1.DashboardService.GetOverview:input_type -> dashboard.v1.GetOverviewRequest
-	19, // 39: dashboard.v1.DashboardService.GetSegment:input_type -> dashboard.v1.GetSegmentRequest
-	22, // 40: dashboard.v1.DashboardService.GetInitiative:input_type -> dashboard.v1.GetInitiativeRequest
-	24, // 41: dashboard.v1.DashboardService.GetProject:input_type -> dashboard.v1.GetProjectRequest
-	26, // 42: dashboard.v1.DashboardService.ListTasks:input_type -> dashboard.v1.ListTasksRequest
-	28, // 43: dashboard.v1.DashboardService.ListMissingEstimates:input_type -> dashboard.v1.ListMissingEstimatesRequest
-	31, // 44: dashboard.v1.DashboardService.ListSegmentLabelWarnings:input_type -> dashboard.v1.ListSegmentLabelWarningsRequest
-	34, // 45: dashboard.v1.DashboardService.ListUntaggedProjects:input_type -> dashboard.v1.ListUntaggedProjectsRequest
-	36, // 46: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:input_type -> dashboard.v1.ListProjectsWithoutInitiativeRequest
-	38, // 47: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:input_type -> dashboard.v1.ListInitiativesWithoutProjectsRequest
-	41, // 48: dashboard.v1.SyncService.StartSync:input_type -> dashboard.v1.StartSyncRequest
-	43, // 49: dashboard.v1.SyncService.GetSyncStatus:input_type -> dashboard.v1.GetSyncStatusRequest
-	14, // 50: dashboard.v1.DashboardService.GetMenu:output_type -> dashboard.v1.GetMenuResponse
-	18, // 51: dashboard.v1.DashboardService.GetOverview:output_type -> dashboard.v1.GetOverviewResponse
-	21, // 52: dashboard.v1.DashboardService.GetSegment:output_type -> dashboard.v1.GetSegmentResponse
-	23, // 53: dashboard.v1.DashboardService.GetInitiative:output_type -> dashboard.v1.GetInitiativeResponse
-	25, // 54: dashboard.v1.DashboardService.GetProject:output_type -> dashboard.v1.GetProjectResponse
-	27, // 55: dashboard.v1.DashboardService.ListTasks:output_type -> dashboard.v1.ListTasksResponse
-	30, // 56: dashboard.v1.DashboardService.ListMissingEstimates:output_type -> dashboard.v1.ListMissingEstimatesResponse
-	33, // 57: dashboard.v1.DashboardService.ListSegmentLabelWarnings:output_type -> dashboard.v1.ListSegmentLabelWarningsResponse
-	35, // 58: dashboard.v1.DashboardService.ListUntaggedProjects:output_type -> dashboard.v1.ListUntaggedProjectsResponse
-	37, // 59: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:output_type -> dashboard.v1.ListProjectsWithoutInitiativeResponse
-	40, // 60: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:output_type -> dashboard.v1.ListInitiativesWithoutProjectsResponse
-	42, // 61: dashboard.v1.SyncService.StartSync:output_type -> dashboard.v1.StartSyncResponse
-	44, // 62: dashboard.v1.SyncService.GetSyncStatus:output_type -> dashboard.v1.GetSyncStatusResponse
-	50, // [50:63] is the sub-list for method output_type
-	37, // [37:50] is the sub-list for method input_type
-	37, // [37:37] is the sub-list for extension type_name
-	37, // [37:37] is the sub-list for extension extendee
-	0,  // [0:37] is the sub-list for field type_name
+	29, // 34: dashboard.v1.ListTasksWithoutProjectResponse.groups:type_name -> dashboard.v1.AssigneeGroup
+	7,  // 35: dashboard.v1.ListMissingTimelineResponse.projects:type_name -> dashboard.v1.ProjectRow
+	44, // 36: dashboard.v1.ListMissingTimelineResponse.initiatives:type_name -> dashboard.v1.TimelineInitiative
+	7,  // 37: dashboard.v1.ListProjectsWithoutTasksResponse.projects:type_name -> dashboard.v1.ProjectRow
+	0,  // 38: dashboard.v1.StartSyncResponse.sync:type_name -> dashboard.v1.SyncInfo
+	0,  // 39: dashboard.v1.GetSyncStatusResponse.sync:type_name -> dashboard.v1.SyncInfo
+	3,  // 40: dashboard.v1.ContributorRow.CellsEntry.value:type_name -> dashboard.v1.ContributorCell
+	10, // 41: dashboard.v1.DashboardService.GetMenu:input_type -> dashboard.v1.GetMenuRequest
+	15, // 42: dashboard.v1.DashboardService.GetOverview:input_type -> dashboard.v1.GetOverviewRequest
+	19, // 43: dashboard.v1.DashboardService.GetSegment:input_type -> dashboard.v1.GetSegmentRequest
+	22, // 44: dashboard.v1.DashboardService.GetInitiative:input_type -> dashboard.v1.GetInitiativeRequest
+	24, // 45: dashboard.v1.DashboardService.GetProject:input_type -> dashboard.v1.GetProjectRequest
+	26, // 46: dashboard.v1.DashboardService.ListTasks:input_type -> dashboard.v1.ListTasksRequest
+	28, // 47: dashboard.v1.DashboardService.ListMissingEstimates:input_type -> dashboard.v1.ListMissingEstimatesRequest
+	31, // 48: dashboard.v1.DashboardService.ListSegmentLabelWarnings:input_type -> dashboard.v1.ListSegmentLabelWarningsRequest
+	34, // 49: dashboard.v1.DashboardService.ListUntaggedProjects:input_type -> dashboard.v1.ListUntaggedProjectsRequest
+	36, // 50: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:input_type -> dashboard.v1.ListProjectsWithoutInitiativeRequest
+	38, // 51: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:input_type -> dashboard.v1.ListInitiativesWithoutProjectsRequest
+	41, // 52: dashboard.v1.DashboardService.ListTasksWithoutProject:input_type -> dashboard.v1.ListTasksWithoutProjectRequest
+	43, // 53: dashboard.v1.DashboardService.ListMissingTimeline:input_type -> dashboard.v1.ListMissingTimelineRequest
+	46, // 54: dashboard.v1.DashboardService.ListProjectsWithoutTasks:input_type -> dashboard.v1.ListProjectsWithoutTasksRequest
+	48, // 55: dashboard.v1.SyncService.StartSync:input_type -> dashboard.v1.StartSyncRequest
+	50, // 56: dashboard.v1.SyncService.GetSyncStatus:input_type -> dashboard.v1.GetSyncStatusRequest
+	14, // 57: dashboard.v1.DashboardService.GetMenu:output_type -> dashboard.v1.GetMenuResponse
+	18, // 58: dashboard.v1.DashboardService.GetOverview:output_type -> dashboard.v1.GetOverviewResponse
+	21, // 59: dashboard.v1.DashboardService.GetSegment:output_type -> dashboard.v1.GetSegmentResponse
+	23, // 60: dashboard.v1.DashboardService.GetInitiative:output_type -> dashboard.v1.GetInitiativeResponse
+	25, // 61: dashboard.v1.DashboardService.GetProject:output_type -> dashboard.v1.GetProjectResponse
+	27, // 62: dashboard.v1.DashboardService.ListTasks:output_type -> dashboard.v1.ListTasksResponse
+	30, // 63: dashboard.v1.DashboardService.ListMissingEstimates:output_type -> dashboard.v1.ListMissingEstimatesResponse
+	33, // 64: dashboard.v1.DashboardService.ListSegmentLabelWarnings:output_type -> dashboard.v1.ListSegmentLabelWarningsResponse
+	35, // 65: dashboard.v1.DashboardService.ListUntaggedProjects:output_type -> dashboard.v1.ListUntaggedProjectsResponse
+	37, // 66: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:output_type -> dashboard.v1.ListProjectsWithoutInitiativeResponse
+	40, // 67: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:output_type -> dashboard.v1.ListInitiativesWithoutProjectsResponse
+	42, // 68: dashboard.v1.DashboardService.ListTasksWithoutProject:output_type -> dashboard.v1.ListTasksWithoutProjectResponse
+	45, // 69: dashboard.v1.DashboardService.ListMissingTimeline:output_type -> dashboard.v1.ListMissingTimelineResponse
+	47, // 70: dashboard.v1.DashboardService.ListProjectsWithoutTasks:output_type -> dashboard.v1.ListProjectsWithoutTasksResponse
+	49, // 71: dashboard.v1.SyncService.StartSync:output_type -> dashboard.v1.StartSyncResponse
+	51, // 72: dashboard.v1.SyncService.GetSyncStatus:output_type -> dashboard.v1.GetSyncStatusResponse
+	57, // [57:73] is the sub-list for method output_type
+	41, // [41:57] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_dashboard_v1_dashboard_proto_init() }
@@ -3496,7 +3967,7 @@ func file_dashboard_v1_dashboard_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dashboard_v1_dashboard_proto_rawDesc), len(file_dashboard_v1_dashboard_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   46,
+			NumMessages:   53,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

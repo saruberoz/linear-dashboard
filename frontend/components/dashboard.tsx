@@ -271,6 +271,20 @@ function ItemsCard({
   )
 }
 
+function TimelineDate({ value }: { value: string }) {
+  if (value)
+    return (
+      <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+        {value}
+      </span>
+    )
+  return (
+    <Badge variant="outline" style={{ color: "var(--warn)" }}>
+      missing
+    </Badge>
+  )
+}
+
 function ProjectTable({
   rows,
   via,
@@ -280,7 +294,7 @@ function ProjectTable({
   rows: T.ProjectRow[]
   via?: string
   split?: boolean
-  extra?: "hidden"
+  extra?: "hidden" | "timeline"
 }) {
   const { href } = useDash()
   return (
@@ -290,6 +304,13 @@ function ProjectTable({
           <TableHead className="pl-4">Project</TableHead>
           <TableHead>Segments</TableHead>
           {extra === "hidden" && <TableHead>Only in</TableHead>}
+          {extra === "timeline" && (
+            <>
+              <TableHead>State</TableHead>
+              <TableHead>Start</TableHead>
+              <TableHead>Target</TableHead>
+            </>
+          )}
           <TableHead className="text-right">Effort</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Tasks</TableHead>
@@ -331,6 +352,19 @@ function ProjectTable({
                   </span>
                 )}
               </TableCell>
+            )}
+            {extra === "timeline" && (
+              <>
+                <TableCell className="text-muted-foreground capitalize">
+                  {p.state}
+                </TableCell>
+                <TableCell>
+                  <TimelineDate value={p.startDate} />
+                </TableCell>
+                <TableCell>
+                  <TimelineDate value={p.targetDate} />
+                </TableCell>
+              </>
             )}
             <TableCell className="text-right whitespace-nowrap tabular-nums">
               <span className="font-medium">
@@ -882,7 +916,7 @@ function ProjectListView({
   title: string
   meta: string
   rows: T.ProjectRow[]
-  extra?: "hidden"
+  extra?: "hidden" | "timeline"
   stateFilter?: boolean
 }) {
   const { pstate } = useDash()
@@ -895,6 +929,81 @@ function ProjectListView({
       {stateFilter && <ProjectStateFilter rows={rows} />}
       <ItemsCard title={`${shown.length} projects`}>
         <ProjectTable rows={shown} extra={extra} />
+      </ItemsCard>
+    </>
+  )
+}
+
+function NoProjectTasksView({ d }: { d: T.AssigneeGroupsResponse }) {
+  return (
+    <>
+      <Title meta="Open tasks in this range that belong to no project, grouped by assignee. They are never counted in any segment. Canceled tasks are left out.">
+        Tasks without project
+      </Title>
+      {d.groups.map((g) => (
+        <ItemsCard
+          key={g.assigneeId}
+          title={g.assignee}
+          description={`${g.tasks.length} task${g.tasks.length > 1 ? "s" : ""}`}
+        >
+          <TaskList tasks={g.tasks} />
+        </ItemsCard>
+      ))}
+      {!d.groups.length && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Every task has a project</EmptyTitle>
+            <EmptyDescription>
+              No open task in this range is missing a project.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </>
+  )
+}
+
+function MissingTimelineView({ d }: { d: T.MissingTimelineResponse }) {
+  return (
+    <>
+      <ProjectListView
+        title="Missing timeline"
+        meta="Projects active in this range without a start or target date in Linear, largest effort first. Canceled projects are hidden unless picked."
+        rows={d.projects}
+        extra="timeline"
+        stateFilter
+      />
+      <ItemsCard
+        title={`${d.initiatives.length} initiatives without a target date`}
+        description="Open [W] / [WS] initiatives. Not filtered by date."
+      >
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="pl-4">Initiative</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="pr-4 text-right">Projects</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {d.initiatives.map((i) => (
+              <TableRow key={i.id}>
+                <TableCell className="w-full max-w-0 pl-4">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate">{i.name}</span>
+                    <OpenInLinear href={i.url} className="ml-auto" />
+                  </span>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {i.status}
+                </TableCell>
+                <TableCell className="pr-4 text-right text-muted-foreground tabular-nums">
+                  {i.projects}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </ItemsCard>
     </>
   )
@@ -1032,6 +1141,9 @@ function useCrumbs(
         untagged: "Untagged projects",
         noinit: "Projects without initiative",
         emptyinit: "Initiatives without projects",
+        noproject: "Tasks without project",
+        notasks: "Projects without tasks",
+        notimeline: "Missing timeline",
         dashboard:
           view.kind === "dashboard"
             ? `Dashboards · ${view.data.name}`
@@ -1097,6 +1209,22 @@ export function Dashboard({
       break
     case "emptyinit":
       body = <EmptyInitiativesView d={view.data} />
+      break
+    case "noproject":
+      body = <NoProjectTasksView d={view.data} />
+      break
+    case "notasks":
+      body = (
+        <ProjectListView
+          title="Projects without tasks"
+          meta="Projects with no tasks at all, by name. Not filtered by date: they have no tasks. Add tasks or archive the project in Linear. Canceled projects are hidden unless picked."
+          rows={view.data.projects}
+          stateFilter
+        />
+      )
+      break
+    case "notimeline":
+      body = <MissingTimelineView d={view.data} />
       break
     case "dashboard":
       body = (

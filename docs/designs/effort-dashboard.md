@@ -144,6 +144,23 @@ Where this section and the rest of the document disagree, this section wins.
 *   **Task lists:** where a list shows projects (drill-down panels and Missing
     estimates), the project is its own column, linked to the project page.
     The drill-down panels widen to `max-w-5xl` to fit it.
+*   **Three more housekeeping pages:**
+    *   **Tasks without project** (`GET /v1/tasks-without-project`): open
+        tasks in range with no project, grouped by assignee like Missing
+        estimates. Canceled tasks are left out.
+    *   **Projects without tasks** (`GET /v1/projects-without-tasks`):
+        projects with no tasks at all, by name. It ignores the range, because
+        such a project has no task dates.
+    *   **Missing timeline** (`GET /v1/missing-timeline`): projects active in
+        range without a start or target date, and open `[W]`/`[WS]`
+        initiatives without a target date (Linear has no initiative start
+        date). The initiative list ignores the range.
+    *   Both project lists reuse the `pstate` state filter, and their menu
+        counts leave canceled projects out.
+    *   The sync fetches project `startDate` and `targetDate` and initiative
+        `targetDate`. Migration `000004_timelines` stores them as nullable
+        `STRING` columns (`YYYY-MM-DD`). `ProjectRow` gains `start_date` and
+        `target_date`.
 
 ### Simplifications adopted from the review
 
@@ -295,7 +312,10 @@ because a reader who doesn't know about them will draw the wrong conclusion.
     hides canceled projects by default.
 7.  **Data-quality warnings.** The dashboard lists:
     *   tasks that carry a segment label on the task itself;
-    *   projects that have no segment label.
+    *   projects that have no segment label;
+    *   tasks that have no project;
+    *   projects that have no tasks;
+    *   projects and initiatives that have no timeline (start or target date).
 
     Each item links to Linear, so someone can fix the tagging there.
 8.  **Date filter.**
@@ -577,6 +597,9 @@ defined in protobuf with `google.api.http` mappings, as Kratos does.
 | `/v1/missing-estimates?segment=&initiative=&project=&all=` | unestimated tasks in range, grouped by assignee; filtered to one segment, initiative or project; `all=true` adds untagged projects and tasks with no project |
 | `/v1/warnings/segment-labels` | tasks with a segment label on the task itself, grouped by project, each group marked counted-via-project or not counted |
 | `/v1/untagged-projects` | projects in range with no segment label, with their effort and project state; canceled ones included, for the page's state filter |
+| `/v1/tasks-without-project` | open tasks in range with no project, grouped by assignee |
+| `/v1/projects-without-tasks` | projects with no tasks at all, whatever the range |
+| `/v1/missing-timeline` | projects in range without a start or target date; open `[W]`/`[WS]` initiatives without a target date |
 | `/v1/sync` (POST) and `/v1/sync` (GET) | start a sync; latest run status and "data as of", plus `phase` and `progress` while a sync runs |
 
 **The summary block has the same shape on every level:**

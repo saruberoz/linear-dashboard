@@ -24,9 +24,12 @@ const OperationDashboardServiceGetProject = "/dashboard.v1.DashboardService/GetP
 const OperationDashboardServiceGetSegment = "/dashboard.v1.DashboardService/GetSegment"
 const OperationDashboardServiceListInitiativesWithoutProjects = "/dashboard.v1.DashboardService/ListInitiativesWithoutProjects"
 const OperationDashboardServiceListMissingEstimates = "/dashboard.v1.DashboardService/ListMissingEstimates"
+const OperationDashboardServiceListMissingTimeline = "/dashboard.v1.DashboardService/ListMissingTimeline"
 const OperationDashboardServiceListProjectsWithoutInitiative = "/dashboard.v1.DashboardService/ListProjectsWithoutInitiative"
+const OperationDashboardServiceListProjectsWithoutTasks = "/dashboard.v1.DashboardService/ListProjectsWithoutTasks"
 const OperationDashboardServiceListSegmentLabelWarnings = "/dashboard.v1.DashboardService/ListSegmentLabelWarnings"
 const OperationDashboardServiceListTasks = "/dashboard.v1.DashboardService/ListTasks"
+const OperationDashboardServiceListTasksWithoutProject = "/dashboard.v1.DashboardService/ListTasksWithoutProject"
 const OperationDashboardServiceListUntaggedProjects = "/dashboard.v1.DashboardService/ListUntaggedProjects"
 
 type DashboardServiceHTTPServer interface {
@@ -38,11 +41,18 @@ type DashboardServiceHTTPServer interface {
 	// ListInitiativesWithoutProjects Initiatives with no linked project. Not date-filtered: they have no tasks.
 	ListInitiativesWithoutProjects(context.Context, *ListInitiativesWithoutProjectsRequest) (*ListInitiativesWithoutProjectsResponse, error)
 	ListMissingEstimates(context.Context, *ListMissingEstimatesRequest) (*ListMissingEstimatesResponse, error)
+	// ListMissingTimeline Projects active in the range without a start or target date, and open
+	// [W]/[WS] initiatives without a target date (initiatives are not date-filtered).
+	ListMissingTimeline(context.Context, *ListMissingTimelineRequest) (*ListMissingTimelineResponse, error)
 	// ListProjectsWithoutInitiative Projects active in the range that are not in any [W]/[WS] initiative, tagged or not.
 	ListProjectsWithoutInitiative(context.Context, *ListProjectsWithoutInitiativeRequest) (*ListProjectsWithoutInitiativeResponse, error)
+	// ListProjectsWithoutTasks Projects with no tasks at all. Not date-filtered: they have no tasks.
+	ListProjectsWithoutTasks(context.Context, *ListProjectsWithoutTasksRequest) (*ListProjectsWithoutTasksResponse, error)
 	ListSegmentLabelWarnings(context.Context, *ListSegmentLabelWarningsRequest) (*ListSegmentLabelWarningsResponse, error)
 	// ListTasks ListTasks returns exactly the tasks behind one contributor-table number.
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
+	// ListTasksWithoutProject Open tasks in range with no project, grouped by assignee.
+	ListTasksWithoutProject(context.Context, *ListTasksWithoutProjectRequest) (*ListTasksWithoutProjectResponse, error)
 	ListUntaggedProjects(context.Context, *ListUntaggedProjectsRequest) (*ListUntaggedProjectsResponse, error)
 }
 
@@ -59,6 +69,9 @@ func RegisterDashboardServiceHTTPServer(s *http.Server, srv DashboardServiceHTTP
 	r.Handle("GET", "/v1/untagged-projects", _DashboardService_ListUntaggedProjects0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/projects-without-initiative", _DashboardService_ListProjectsWithoutInitiative0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/initiatives-without-projects", _DashboardService_ListInitiativesWithoutProjects0_HTTP_Handler(srv))
+	r.Handle("GET", "/v1/tasks-without-project", _DashboardService_ListTasksWithoutProject0_HTTP_Handler(srv))
+	r.Handle("GET", "/v1/missing-timeline", _DashboardService_ListMissingTimeline0_HTTP_Handler(srv))
+	r.Handle("GET", "/v1/projects-without-tasks", _DashboardService_ListProjectsWithoutTasks0_HTTP_Handler(srv))
 }
 
 func _DashboardService_GetMenu0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
@@ -279,6 +292,63 @@ func _DashboardService_ListInitiativesWithoutProjects0_HTTP_Handler(srv Dashboar
 	}
 }
 
+func _DashboardService_ListTasksWithoutProject0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListTasksWithoutProjectRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationDashboardServiceListTasksWithoutProject)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListTasksWithoutProject(ctx, req.(*ListTasksWithoutProjectRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListTasksWithoutProjectResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _DashboardService_ListMissingTimeline0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListMissingTimelineRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationDashboardServiceListMissingTimeline)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListMissingTimeline(ctx, req.(*ListMissingTimelineRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListMissingTimelineResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _DashboardService_ListProjectsWithoutTasks0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListProjectsWithoutTasksRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationDashboardServiceListProjectsWithoutTasks)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListProjectsWithoutTasks(ctx, req.(*ListProjectsWithoutTasksRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListProjectsWithoutTasksResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
 type DashboardServiceHTTPClient interface {
 	GetInitiative(ctx context.Context, req *GetInitiativeRequest, opts ...http.CallOption) (rsp *GetInitiativeResponse, err error)
 	GetMenu(ctx context.Context, req *GetMenuRequest, opts ...http.CallOption) (rsp *GetMenuResponse, err error)
@@ -288,11 +358,18 @@ type DashboardServiceHTTPClient interface {
 	// ListInitiativesWithoutProjects Initiatives with no linked project. Not date-filtered: they have no tasks.
 	ListInitiativesWithoutProjects(ctx context.Context, req *ListInitiativesWithoutProjectsRequest, opts ...http.CallOption) (rsp *ListInitiativesWithoutProjectsResponse, err error)
 	ListMissingEstimates(ctx context.Context, req *ListMissingEstimatesRequest, opts ...http.CallOption) (rsp *ListMissingEstimatesResponse, err error)
+	// ListMissingTimeline Projects active in the range without a start or target date, and open
+	// [W]/[WS] initiatives without a target date (initiatives are not date-filtered).
+	ListMissingTimeline(ctx context.Context, req *ListMissingTimelineRequest, opts ...http.CallOption) (rsp *ListMissingTimelineResponse, err error)
 	// ListProjectsWithoutInitiative Projects active in the range that are not in any [W]/[WS] initiative, tagged or not.
 	ListProjectsWithoutInitiative(ctx context.Context, req *ListProjectsWithoutInitiativeRequest, opts ...http.CallOption) (rsp *ListProjectsWithoutInitiativeResponse, err error)
+	// ListProjectsWithoutTasks Projects with no tasks at all. Not date-filtered: they have no tasks.
+	ListProjectsWithoutTasks(ctx context.Context, req *ListProjectsWithoutTasksRequest, opts ...http.CallOption) (rsp *ListProjectsWithoutTasksResponse, err error)
 	ListSegmentLabelWarnings(ctx context.Context, req *ListSegmentLabelWarningsRequest, opts ...http.CallOption) (rsp *ListSegmentLabelWarningsResponse, err error)
 	// ListTasks ListTasks returns exactly the tasks behind one contributor-table number.
 	ListTasks(ctx context.Context, req *ListTasksRequest, opts ...http.CallOption) (rsp *ListTasksResponse, err error)
+	// ListTasksWithoutProject Open tasks in range with no project, grouped by assignee.
+	ListTasksWithoutProject(ctx context.Context, req *ListTasksWithoutProjectRequest, opts ...http.CallOption) (rsp *ListTasksWithoutProjectResponse, err error)
 	ListUntaggedProjects(ctx context.Context, req *ListUntaggedProjectsRequest, opts ...http.CallOption) (rsp *ListUntaggedProjectsResponse, err error)
 }
 
@@ -417,6 +494,24 @@ func (c *DashboardServiceHTTPClientImpl) ListMissingEstimates(ctx context.Contex
 	return &out, nil
 }
 
+// ListMissingTimeline Projects active in the range without a start or target date, and open
+// [W]/[WS] initiatives without a target date (initiatives are not date-filtered).
+func (c *DashboardServiceHTTPClientImpl) ListMissingTimeline(ctx context.Context, in *ListMissingTimelineRequest, opts ...http.CallOption) (*ListMissingTimelineResponse, error) {
+	var out ListMissingTimelineResponse
+	pattern := "/v1/missing-timeline"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationDashboardServiceListMissingTimeline),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListProjectsWithoutInitiative Projects active in the range that are not in any [W]/[WS] initiative, tagged or not.
 func (c *DashboardServiceHTTPClientImpl) ListProjectsWithoutInitiative(ctx context.Context, in *ListProjectsWithoutInitiativeRequest, opts ...http.CallOption) (*ListProjectsWithoutInitiativeResponse, error) {
 	var out ListProjectsWithoutInitiativeResponse
@@ -425,6 +520,23 @@ func (c *DashboardServiceHTTPClientImpl) ListProjectsWithoutInitiative(ctx conte
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationDashboardServiceListProjectsWithoutInitiative),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListProjectsWithoutTasks Projects with no tasks at all. Not date-filtered: they have no tasks.
+func (c *DashboardServiceHTTPClientImpl) ListProjectsWithoutTasks(ctx context.Context, in *ListProjectsWithoutTasksRequest, opts ...http.CallOption) (*ListProjectsWithoutTasksResponse, error) {
+	var out ListProjectsWithoutTasksResponse
+	pattern := "/v1/projects-without-tasks"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationDashboardServiceListProjectsWithoutTasks),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
@@ -458,6 +570,23 @@ func (c *DashboardServiceHTTPClientImpl) ListTasks(ctx context.Context, in *List
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationDashboardServiceListTasks),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListTasksWithoutProject Open tasks in range with no project, grouped by assignee.
+func (c *DashboardServiceHTTPClientImpl) ListTasksWithoutProject(ctx context.Context, in *ListTasksWithoutProjectRequest, opts ...http.CallOption) (*ListTasksWithoutProjectResponse, error) {
+	var out ListTasksWithoutProjectResponse
+	pattern := "/v1/tasks-without-project"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationDashboardServiceListTasksWithoutProject),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)

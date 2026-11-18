@@ -11,6 +11,9 @@ export type View =
   | { kind: "untagged"; data: T.ProjectListResponse }
   | { kind: "noinit"; data: T.ProjectListResponse }
   | { kind: "emptyinit"; data: T.EmptyInitiativesResponse }
+  | { kind: "noproject"; data: T.AssigneeGroupsResponse }
+  | { kind: "notimeline"; data: T.MissingTimelineResponse }
+  | { kind: "notasks"; data: T.ProjectListResponse }
   | { kind: "dashboard"; id: string; data: T.SavedDashboard }
   | { kind: "error"; error: T.ApiError }
 

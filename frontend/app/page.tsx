@@ -94,6 +94,30 @@ async function loadView(
             "initiatives-without-projects"
           ),
         }
+      case "noproject":
+        return {
+          kind,
+          data: await serverGet<T.AssigneeGroupsResponse>(
+            "tasks-without-project",
+            range
+          ),
+        }
+      case "notimeline":
+        return {
+          kind,
+          data: await serverGet<T.MissingTimelineResponse>(
+            "missing-timeline",
+            range
+          ),
+        }
+      case "notasks":
+        return {
+          kind,
+          data: await serverGet<T.ProjectListResponse>(
+            "projects-without-tasks",
+            range
+          ),
+        }
       default:
         return {
           kind: "all",

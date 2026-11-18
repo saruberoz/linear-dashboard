@@ -70,6 +70,7 @@ type Initiative struct {
 	CreatedAt  time.Time
 	Visible    bool     // name starts with [W] or [WS]
 	ProjectIDs []string // all linked projects, tagged or not
+	TargetDate string   // YYYY-MM-DD, "" when not set
 }
 
 // Project is a Linear project.
@@ -82,6 +83,8 @@ type Project struct {
 	LabelIDs      []string
 	Segments      []string // derived: segment keys in canonical order
 	InitiativeIDs []string // all linked initiatives
+	StartDate     string   // YYYY-MM-DD, "" when not set
+	TargetDate    string   // YYYY-MM-DD, "" when not set
 }
 
 // Task is a Linear issue.

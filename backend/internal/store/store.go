@@ -121,15 +121,16 @@ func copies(ds *report.Dataset) []tableCopy {
 	for _, l := range ds.Labels {
 		labels.rows = append(labels.rows, []any{l.ID, l.Kind, l.Name, nullString(l.Group)})
 	}
-	inis := tableCopy{table: "initiatives", columns: []string{"id", "name", "status", "url", "created_at", "is_visible"}}
+	inis := tableCopy{table: "initiatives", columns: []string{"id", "name", "status", "url", "created_at", "is_visible", "target_date"}}
 	for _, i := range ds.Initiatives {
-		inis.rows = append(inis.rows, []any{i.ID, i.Name, i.Status, i.URL, i.CreatedAt, i.Visible})
+		inis.rows = append(inis.rows, []any{i.ID, i.Name, i.Status, i.URL, i.CreatedAt, i.Visible, nullString(i.TargetDate)})
 	}
-	projects := tableCopy{table: "projects", columns: []string{"id", "name", "state", "url", "created_at", "segments"}}
+	projects := tableCopy{table: "projects", columns: []string{"id", "name", "state", "url", "created_at", "segments", "start_date", "target_date"}}
 	plabels := tableCopy{table: "project_labels", columns: []string{"project_id", "label_id"}}
 	links := tableCopy{table: "initiative_projects", columns: []string{"initiative_id", "project_id"}}
 	for _, p := range ds.Projects {
-		projects.rows = append(projects.rows, []any{p.ID, p.Name, p.State, p.URL, p.CreatedAt, nonNil(p.Segments)})
+		projects.rows = append(projects.rows, []any{p.ID, p.Name, p.State, p.URL, p.CreatedAt, nonNil(p.Segments),
+			nullString(p.StartDate), nullString(p.TargetDate)})
 		for _, l := range unique(p.LabelIDs) {
 			plabels.rows = append(plabels.rows, []any{p.ID, l})
 		}
@@ -194,21 +195,21 @@ func (s *Store) Load(ctx context.Context) (*report.Dataset, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := collect(ctx, s.pool, "SELECT id, name, status, url, created_at FROM initiatives", func(r pgx.Rows) error {
+	if err := collect(ctx, s.pool, "SELECT id, name, status, url, created_at, COALESCE(target_date, '') FROM initiatives", func(r pgx.Rows) error {
 		var i report.Initiative
-		err := r.Scan(&i.ID, &i.Name, &i.Status, &i.URL, &i.CreatedAt)
+		err := r.Scan(&i.ID, &i.Name, &i.Status, &i.URL, &i.CreatedAt, &i.TargetDate)
 		inis = append(inis, i)
 		return err
 	}); err != nil {
 		return nil, err
 	}
-	const projectsSQL = `SELECT p.id, p.name, p.state, p.url, p.created_at,
+	const projectsSQL = `SELECT p.id, p.name, p.state, p.url, p.created_at, COALESCE(p.start_date, ''), COALESCE(p.target_date, ''),
 	  COALESCE((SELECT array_agg(label_id) FROM project_labels WHERE project_id = p.id), ARRAY[]::STRING[]),
 	  COALESCE((SELECT array_agg(initiative_id) FROM initiative_projects WHERE project_id = p.id), ARRAY[]::STRING[])
 	FROM projects p`
 	if err := collect(ctx, s.pool, projectsSQL, func(r pgx.Rows) error {
 		var p report.Project
-		err := r.Scan(&p.ID, &p.Name, &p.State, &p.URL, &p.CreatedAt, &p.LabelIDs, &p.InitiativeIDs)
+		err := r.Scan(&p.ID, &p.Name, &p.State, &p.URL, &p.CreatedAt, &p.StartDate, &p.TargetDate, &p.LabelIDs, &p.InitiativeIDs)
 		projects = append(projects, p)
 		return err
 	}); err != nil {

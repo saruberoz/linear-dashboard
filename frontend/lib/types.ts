@@ -72,6 +72,8 @@ export interface ProjectRow {
   tasks: number
   missing: number
   hiddenInitiatives: string[]
+  startDate: string // YYYY-MM-DD, "" when not set
+  targetDate: string
 }
 
 export interface TaskRow {
@@ -124,6 +126,9 @@ export interface MenuResponse {
   untaggedCount: number
   noInitiativeCount: number
   emptyInitiativeCount: number
+  noProjectTaskCount: number
+  missingTimelineCount: number
+  emptyProjectCount: number
   sync: SyncInfo
 }
 
@@ -214,6 +219,24 @@ export interface EmptyInitiative {
 
 export interface EmptyInitiativesResponse {
   initiatives: EmptyInitiative[]
+}
+
+export interface AssigneeGroupsResponse {
+  total: number
+  groups: { assigneeId: string; assignee: string; tasks: TaskRow[] }[]
+}
+
+export interface TimelineInitiative {
+  id: string
+  name: string
+  url: string
+  status: string
+  projects: number
+}
+
+export interface MissingTimelineResponse {
+  projects: ProjectRow[]
+  initiatives: TimelineInitiative[]
 }
 
 export interface ApiError {
