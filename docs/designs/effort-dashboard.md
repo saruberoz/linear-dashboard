@@ -2,7 +2,7 @@
 
 *   **Author:** Wilson Sumanang
 *   **Status:** Implemented (see "As built")
-*   **Date:** 2026-11-17
+*   **Date:** 2026-11-17, updated 2026-11-18 (see "Changes after launch")
 *   **Review:** EGM review finished on 2026-11-17 (Stages 5–9). The author
     concluded it **with findings still open**. The implementation plan is not
     ready to build from: 6 Blockers in Stage 9. The review reports and the
@@ -113,6 +113,38 @@ Where this section and the rest of the document disagree, this section wins.
     B2B 402.33, B2G 16.33, B2B NG 0, B2C 715.33, a total of 1,134, and 161
     unestimated out of 585.
 
+### Changes after launch (2026-11-18)
+
+*   **Fifth segment, Internal PARKEE** (key `INTERNAL`): a project counts when
+    it carries the project label `Internal_PARKEE`. The usual matching applies,
+    so "Internal PARKEE" and "internal-parkee" also match, but plain
+    "Internal" does not. It is listed after B2C everywhere segments appear. The
+    label sits in the `WS` label group in Linear, with the other four.
+*   **Sync schedule:** `SYNC_CRON` takes several cron specs separated by `;`.
+    The default, `0 1 * * *; 0 17 * * 1-5`, syncs every night at 01:00 and
+    every weekday at 17:00, in `SYNC_TZ`. The value is quoted in `.env` so the
+    Makefile can source it with the shell.
+*   **Sync status in the header:** a black pill.
+    *   The text is green when the last successful sync is from today
+        (Asia/Jakarta), and red when it is older, failed or missing.
+    *   While a sync runs, the pill shows "Syncing… 42%" with a bar that fills
+        as records arrive. The Linear client reports the record count after
+        every page. The runner compares the running count with the size of the
+        current copy, so downloading covers 0–95%. Writing to the store shows
+        "Saving…" at 95%. The first sync has no copy to compare with, so its
+        bar pulses without a number.
+    *   `SyncInfo` gains `phase` (`fetching` or `saving`) and `progress`
+        (0–100, or -1 when the size is unknown). The page polls every 2 seconds
+        while a sync runs.
+*   **Untagged projects page:** a row of project-state toggles (Backlog,
+    Planned, Started, Paused, Completed, Canceled), each with its count, kept
+    in the URL as `pstate`. Canceled is off by default. The menu and overview
+    untagged counts leave canceled projects out, to match the page's default.
+    The endpoint still returns canceled projects, so the page can show them.
+*   **Task lists:** where a list shows projects (drill-down panels and Missing
+    estimates), the project is its own column, linked to the project page.
+    The drill-down panels widen to `max-w-5xl` to fit it.
+
 ### Simplifications adopted from the review
 
 *   **Transport:** HTTP only, with no gRPC.
@@ -162,11 +194,12 @@ Where this section and the rest of the document disagree, this section wins.
 ## Overview
 
 The Effort Dashboard is an internal, read-only web app. It shows PARKEE's
-management and stakeholders where engineering effort goes across the four
-business segments: B2B, B2G, B2B NG and B2C. It also shows how far along that
-work is.
+management and stakeholders where engineering effort goes across the five
+business segments: B2B, B2G, B2B NG, B2C and Internal PARKEE. It also shows how
+far along that work is.
 
-Every night it copies the workspace from Linear into its own database. It then
+Every night, and every weekday at 17:00, it copies the workspace from Linear
+into its own database. It then
 applies a fixed set of counting rules and shows the result on one page:
 
 *   a left-hand menu that you can filter by name, listing segments, then
@@ -227,7 +260,8 @@ because a reader who doesn't know about them will draw the wrong conclusion.
 
 1.  **Segment share.** For any date range, the overview shows each segment's
     share of effort, effort in points, project count, and the split between done
-    and in progress. The four shares add up to exactly 100% of the tagged work.
+    and in progress. The segment shares add up to exactly 100% of the tagged
+    work.
 2.  **No double counting.**
     *   A project with N segments gives 1/N of its effort to each segment.
     *   A parent task whose sub-tasks are estimated counts as 0.
@@ -255,8 +289,10 @@ because a reader who doesn't know about them will draw the wrong conclusion.
     *   By default it covers tagged projects. An "All projects" toggle adds
         untagged projects and tasks with no project.
 6.  **Untagged work.** The overview shows only the number of untagged
-    projects (author's decision). Their effort appears on the Untagged projects
-    page, not on the overview, and is never part of the segment percentages.
+    projects, not counting canceled ones (author's decision). Their effort
+    appears on the Untagged projects page, not on the overview, and is never
+    part of the segment percentages. That page filters by project state and
+    hides canceled projects by default.
 7.  **Data-quality warnings.** The dashboard lists:
     *   tasks that carry a segment label on the task itself;
     *   projects that have no segment label.
@@ -266,11 +302,12 @@ because a reader who doesn't know about them will draw the wrong conclusion.
     *   A task counts in a range if it was created, completed or in progress
         during that range.
     *   The range uses Asia/Jakarta time and defaults to 1–30 November 2026.
-9.  **Freshness.** Data is synced from Linear every night. A Refresh button
-    starts a sync on demand. The header on every view shows the **last sync
-    time and its result** (author's request):
+9.  **Freshness.** Data is synced from Linear every night at 01:00 and every
+    weekday at 17:00. A Refresh button starts a sync on demand. The header on
+    every view shows the **last sync time and its result** (author's request)
+    in a black pill, green when the data is from today and red otherwise:
     *   after a success, "Synced 17 Nov 2026, 01:07 WIB";
-    *   while a sync runs, "Syncing… started 01:00 WIB";
+    *   while a sync runs, "Syncing… 42%" with a progress bar;
     *   after a failure, a warning: "Last sync failed 18 Nov, 01:09 WIB · some
         data is from the last successful sync, 17 Nov, 01:07 WIB", with the
         error reason in a tooltip.
@@ -326,11 +363,11 @@ because a reader who doesn't know about them will draw the wrong conclusion.
 
 ### CUJ 1: Monthly segment report
 
-*   **Given**: The nightly sync has finished. The date range is the default,
+*   **Given**: A scheduled sync has finished. The date range is the default,
     1–30 November 2026.
 *   **When**: A manager opens the dashboard.
 *   **Then**: The overview shows each segment's share of tagged effort; the
-    four shares add up to 100%. Each segment also shows its points, project count
+    shares add up to 100%. Each segment also shows its points, project count
     and done-vs-in-progress split. Two warnings sit at the top: the number of
     tasks with a segment label on the task itself, and the number of untagged
     projects.
@@ -388,7 +425,7 @@ because a reader who doesn't know about them will draw the wrong conclusion.
 ### Components and data flow
 
 ```text
-                 nightly 01:00 WIB  /  POST /v1/sync (15 min cooldown)
+    01:00 daily, 17:00 weekdays (WIB)  /  POST /v1/sync (15 min cooldown)
 Linear GraphQL ───────────────────────────────────────────────┐
  (2,500 req/h, 3M complexity/h)                               ▼
                                          ┌──────────────────────────────────┐
@@ -418,7 +455,7 @@ There are three services, all run by Docker Compose:
 *   **CockroachDB** is a single node with a persistent volume. It is the only
     store.
 *   **The backend**, in Go with Kratos v2, is the only thing that talks to
-    Linear. It also runs the nightly sync in-process. It holds every counting
+    Linear. It also runs the scheduled syncs in-process. It holds every counting
     rule and serves JSON.
 *   **The frontend**, in Next.js with shadcn/ui, renders the single page. The
     browser only ever talks to the frontend. The frontend passes `/api/v1/*` on
@@ -487,12 +524,12 @@ work.
 *   Nothing is marked deleted, so a task removed in Linear stays visible until
     the next successful run.
 *   The header shows the failure: "Last sync failed <time> · some data is from
-    the last successful sync, <time>". `GET /v1/sync/status` returns the
+    the last successful sync, <time>". `GET /v1/sync` returns the
     last success time, the last attempt time and the attempt's error.
 
-**When it runs:** an in-process scheduler runs the sync daily at 01:00
-Asia/Jakarta. If the database has no successful run yet, the sync also runs at
-startup.
+**When it runs:** an in-process scheduler runs the sync every day at 01:00 and
+every weekday at 17:00, Asia/Jakarta. If the database has no successful run
+yet, the sync also runs at startup.
 
 ### Counting rules (backend `report` package)
 
@@ -501,7 +538,7 @@ is covered by table-driven tests built from the cases found in the real data.
 
 | Rule | Input | Result |
 |---|---|---|
-| Segment of a project | project labels | the set of B2B, B2G, B2B NG and B2C labels. A label matches if it equals a segment name after lower-casing and removing spaces, hyphens and underscores. `b2bng` and `b2bnongroup` both mean B2B NG. |
+| Segment of a project | project labels | the set of B2B, B2G, B2B NG, B2C and Internal PARKEE labels. A label matches if it equals a segment name after lower-casing and removing spaces, hyphens and underscores. `b2bng` and `b2bnongroup` both mean B2B NG; `internalparkee` means Internal PARKEE. |
 | Segment split | project effort, N segments | each segment gets effort ÷ N |
 | Effective points | task, its sub-tasks | 0 if canceled, a duplicate, or a parent with an estimated, non-canceled sub-task anywhere below it; otherwise the task's own estimate (0 if none) |
 | Missing estimate | task, team | no estimate, and not canceled, and the team has estimates turned on, and not a parent whose sub-tasks are estimated |
@@ -539,8 +576,8 @@ defined in protobuf with `google.api.http` mappings, as Kratos does.
 | `/v1/tasks?scope=&assignee=&column=&dim=` | the drill-down list behind one contributor-table number |
 | `/v1/missing-estimates?segment=&initiative=&project=&all=` | unestimated tasks in range, grouped by assignee; filtered to one segment, initiative or project; `all=true` adds untagged projects and tasks with no project |
 | `/v1/warnings/segment-labels` | tasks with a segment label on the task itself, grouped by project, each group marked counted-via-project or not counted |
-| `/v1/untagged-projects` | projects in range with no segment label, with their effort |
-| `/v1/sync` (POST) and `/v1/sync/status` | start a sync; latest run status and "data as of" |
+| `/v1/untagged-projects` | projects in range with no segment label, with their effort and project state; canceled ones included, for the page's state filter |
+| `/v1/sync` (POST) and `/v1/sync` (GET) | start a sync; latest run status and "data as of", plus `phase` and `progress` while a sync runs |
 
 **The summary block has the same shape on every level:**
 
@@ -571,7 +608,8 @@ defined in protobuf with `google.api.http` mappings, as Kratos does.
         multi-segment project shows "All tagged work › Project".
 *   **One route, `/`.** The state lives in the URL as
     `?scope=all|segment:KEY|initiative:ID|project:ID|missing|labelwarn|untagged`,
-    plus `&from&to&dim&seg&via`. The page is a server component. It reads the URL,
+    plus `&from&to&dim&seg&via`, and `pstate` for the untagged page's state
+    filter. The page is a server component. It reads the URL,
     calls the matching backend endpoint and `/v1/menu` from the server, and
     hands the data to client components. Changing the selection or the date
     calls `router.replace`, which loads the page again on the server.
@@ -608,7 +646,8 @@ Indexes:
 *   **The backend reads:**
     *   `LINEAR_API_KEY`;
     *   `DATABASE_URL`;
-    *   `SYNC_CRON`, default `0 1 * * *`;
+    *   `SYNC_CRON`, one or more cron specs separated by `;`, default
+        `0 1 * * *; 0 17 * * 1-5`;
     *   `SYNC_TZ`, default `Asia/Jakarta`;
     *   `SYNC_COOLDOWN`, default `15m`.
 *   **The frontend reads** `BACKEND_URL`, which is used only on the server and
