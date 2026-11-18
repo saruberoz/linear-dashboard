@@ -63,7 +63,7 @@ function Counted({ t, share }: { t: TaskRow; share: boolean }) {
 }
 
 /**
- * Linear-style task rows: priority · ID · status + title · assignee · estimate · counted.
+ * Linear-style task rows: priority · ID · status + title · [project] · assignee · estimate · counted.
  * With showShare, "Counted" shows the task's share of the clicked number ("3 of 6" for a split project).
  */
 export function TaskList({
@@ -88,6 +88,7 @@ export function TaskList({
           <TableHead className="w-6 pl-4" />
           <TableHead className="w-20">ID</TableHead>
           <TableHead>Task</TableHead>
+          {showProject && <TableHead>Project</TableHead>}
           <TableHead>Assignee</TableHead>
           <TableHead className="text-right">Estimate</TableHead>
           <TableHead className="pr-4 text-right">
@@ -160,7 +161,11 @@ export function TaskList({
                     </TooltipContent>
                   </Tooltip>
                 )}
-                {showProject && t.projectId && (
+              </span>
+            </TableCell>
+            {showProject && (
+              <TableCell className="max-w-48 truncate text-muted-foreground">
+                {t.projectId ? (
                   <Link
                     href={href({
                       scope: `project:${t.projectId}`,
@@ -168,13 +173,16 @@ export function TaskList({
                       mscope: "",
                       all: "",
                     })}
-                    className="hidden max-w-48 shrink-0 truncate text-xs text-muted-foreground hover:text-foreground md:inline"
+                    title={t.projectName}
+                    className="hover:text-foreground hover:underline"
                   >
                     {t.projectName}
                   </Link>
+                ) : (
+                  <span className="text-muted-foreground/60">No project</span>
                 )}
-              </span>
-            </TableCell>
+              </TableCell>
+            )}
             <TableCell className="whitespace-nowrap text-muted-foreground">
               {t.assignee || "Unassigned"}
             </TableCell>

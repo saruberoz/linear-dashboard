@@ -1125,7 +1125,7 @@ function InsightCard({
         )}
       </CardContent>
       <Sheet open={!!drill} onOpenChange={(o) => !o && setDrill(null)}>
-        <SheetContent className="w-full data-[side=right]:sm:max-w-3xl">
+        <SheetContent className="w-full data-[side=right]:sm:max-w-5xl">
           <SheetHeader>
             <SheetTitle>{drill?.title}</SheetTitle>
             <SheetDescription>
