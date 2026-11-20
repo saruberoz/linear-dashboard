@@ -191,6 +191,14 @@ func (h *Dashboard) ListTasksWithoutProject(_ context.Context, req *pb.ListTasks
 	return ds.TasksWithoutProject(r), nil
 }
 
+func (h *Dashboard) ListUnassignedTasks(_ context.Context, req *pb.ListUnassignedTasksRequest) (*pb.ListUnassignedTasksResponse, error) {
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	if err != nil {
+		return nil, err
+	}
+	return ds.UnassignedTasks(r), nil
+}
+
 func (h *Dashboard) ListMissingTimeline(_ context.Context, req *pb.ListMissingTimelineRequest) (*pb.ListMissingTimelineResponse, error) {
 	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
 	if err != nil {

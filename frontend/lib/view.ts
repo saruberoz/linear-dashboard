@@ -12,6 +12,7 @@ export type View =
   | { kind: "noinit"; data: T.ProjectListResponse }
   | { kind: "emptyinit"; data: T.EmptyInitiativesResponse }
   | { kind: "noproject"; data: T.AssigneeGroupsResponse }
+  | { kind: "unassigned"; data: T.UnassignedTasksResponse }
   | { kind: "notimeline"; data: T.MissingTimelineResponse }
   | { kind: "notasks"; data: T.ProjectListResponse }
   | { kind: "dashboard"; id: string; data: T.SavedDashboard }

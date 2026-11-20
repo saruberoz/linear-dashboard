@@ -6,7 +6,7 @@ import { DEFAULT_PROJECT_STATES } from "@/lib/constants"
 
 /**
  * All dashboard state lives in the URL so any view can be shared as a link.
- *   scope  all | segment:KEY | initiative:ID | project:ID | missing | labelwarn | untagged | noinit | emptyinit | noproject | notasks | notimeline
+ *   scope  all | segment:KEY | initiative:ID | project:ID | missing | labelwarn | untagged | noinit | emptyinit | noproject | unassigned | notasks | notimeline
  *   from, to  YYYY-MM-DD (Asia/Jakarta), default: the current month
  *   dim    contributor-table columns: priority | status | segment
  *   via    breadcrumb path: segment:KEY or initiative:ID (never changes numbers)

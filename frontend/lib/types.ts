@@ -74,6 +74,8 @@ export interface ProjectRow {
   hiddenInitiatives: string[]
   startDate: string // YYYY-MM-DD, "" when not set
   targetDate: string
+  /** Segment view only: >1 when sharePts is also split across that many initiatives. */
+  initiativeSplitOf?: number
 }
 
 export interface TaskRow {
@@ -127,6 +129,7 @@ export interface MenuResponse {
   noInitiativeCount: number
   emptyInitiativeCount: number
   noProjectTaskCount: number
+  unassignedTaskCount: number
   missingTimelineCount: number
   emptyProjectCount: number
   sync: SyncInfo
@@ -140,6 +143,10 @@ export interface SegmentShare {
   projects: number
   shared: number
   status: StatusSplit
+  /** Distinct assignees with a non-canceled task in range; unassigned excluded. */
+  contributors: number
+  /** Assigned effort ÷ contributors: unassigned tasks count in neither. */
+  ptsPerContributor: number
 }
 
 export interface OverviewResponse {
@@ -219,6 +226,12 @@ export interface EmptyInitiative {
 
 export interface EmptyInitiativesResponse {
   initiatives: EmptyInitiative[]
+}
+
+export interface UnassignedTasksResponse {
+  total: number
+  pts: number
+  tasks: TaskRow[]
 }
 
 export interface AssigneeGroupsResponse {

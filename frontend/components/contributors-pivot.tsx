@@ -94,6 +94,7 @@ export function ContributorsPivot({
   }, [drill, scope, range.from, range.to])
 
   if (!table) return null
+  const people = table.rows.filter((r) => r.assigneeId !== "_unassigned").length
 
   const cell = (
     value: number,
@@ -132,10 +133,16 @@ export function ContributorsPivot({
   return (
     <Card size="sm" className="gap-0 pb-0">
       <CardHeader className="pb-3">
-        <CardTitle>Contributors</CardTitle>
+        <CardTitle>
+          Contributors{" "}
+          <span className="font-normal text-muted-foreground tabular-nums">
+            {people}
+          </span>
+        </CardTitle>
         <CardDescription>
-          Effort in pts by assignee · small number = task count · click any
-          number to see the tasks
+          Effort in pts by assignee · the count next to the title leaves out
+          Unassigned · small number = task count · click any number to see the
+          tasks
         </CardDescription>
         <CardAction>
           <ToggleGroup

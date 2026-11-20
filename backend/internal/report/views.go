@@ -152,6 +152,7 @@ func (d *Dataset) Menu(r Range) *pb.GetMenuResponse {
 	res.NoProjectTaskCount = int32(len(d.tasksWithoutProject(r)))
 	res.MissingTimelineCount = int32(len(d.initiativesWithoutTarget())) + notCanceled(d.projectsWithoutTimeline(r))
 	res.EmptyProjectCount = notCanceled(d.projectsWithoutTasks())
+	res.UnassignedTaskCount = int32(len(d.unassignedTasks(r)))
 	return res
 }
 
@@ -201,6 +202,8 @@ func (d *Dataset) groupByInitiative(ps []*Project) []*initiativeGroup {
 func (d *Dataset) Overview(r Range) *pb.GetOverviewResponse {
 	res := &pb.GetOverviewResponse{}
 	shares := map[string]*pb.SegmentShare{}
+	people := map[string]map[string]bool{} // segment -> assignee IDs
+	assigned := map[string]float64{}       // segment -> effort of assigned tasks
 	for _, s := range Segments {
 		sh := &pb.SegmentShare{Key: s.Key, Label: s.Label, Status: &pb.StatusSplit{}}
 		shares[s.Key] = sh
@@ -209,7 +212,22 @@ func (d *Dataset) Overview(r Range) *pb.GetOverviewResponse {
 	for _, p := range d.TaggedProjects(r, "") {
 		row := d.projectRow(p, r, "")
 		n := float64(len(p.Segments))
+		var assignees []string
+		var assignedPts float64
+		for _, t := range d.TasksInRange(p.ID, r) {
+			if t.AssigneeID != "" && t.Status() != StatusCanceled {
+				assignees = append(assignees, t.AssigneeID)
+				assignedPts += t.EffectivePts
+			}
+		}
 		for _, k := range p.Segments {
+			assigned[k] += assignedPts / n
+			if people[k] == nil {
+				people[k] = map[string]bool{}
+			}
+			for _, a := range assignees {
+				people[k][a] = true
+			}
 			sh := shares[k]
 			sh.Projects++
 			if len(p.Segments) > 1 {
@@ -226,6 +244,10 @@ func (d *Dataset) Overview(r Range) *pb.GetOverviewResponse {
 	}
 	for _, sh := range res.Segments {
 		sh.Pct = pct(sh.Pts, res.TaggedTotal)
+		sh.Contributors = int32(len(people[sh.Key]))
+		if sh.Contributors > 0 {
+			sh.PtsPerContributor = assigned[sh.Key] / float64(sh.Contributors)
+		}
 	}
 	ws, _ := d.scopeTasks(Scope{Kind: "all"}, r)
 	res.Summary = d.summarize(ws, false)
@@ -243,7 +265,9 @@ func (d *Dataset) Overview(r Range) *pb.GetOverviewResponse {
 	return res
 }
 
-// Segment returns one segment's view, with project effort split evenly across segments.
+// Segment returns one segment's view, with project effort split evenly across
+// segments. A project listed under several initiatives is split evenly between
+// them too, so the initiative subtotals add up to the segment total.
 func (d *Dataset) Segment(key string, r Range) (*pb.GetSegmentResponse, error) {
 	if !isSegmentKey(key) {
 		return nil, fmt.Errorf("%w: segment %s", ErrNotFound, key)
@@ -256,10 +280,21 @@ func (d *Dataset) Segment(key string, r Range) (*pb.GetSegmentResponse, error) {
 	ps := d.TaggedProjects(r, key)
 	res := &pb.GetSegmentResponse{Key: key, Label: SegmentLabel(key), ProjectCount: int32(len(ps)),
 		Summary: d.summarize(ws, true)}
-	for _, g := range d.groupByInitiative(ps) {
+	groups := d.groupByInitiative(ps)
+	listed := map[string]int{}
+	for _, g := range groups {
+		for _, p := range g.projects {
+			listed[p.ID]++
+		}
+	}
+	for _, g := range groups {
 		ig := &pb.InitiativeGroup{Id: g.id, Name: g.name, Url: g.url}
 		for _, p := range g.projects {
 			row := d.projectRow(p, r, key)
+			if n := listed[p.ID]; n > 1 {
+				row.InitiativeSplitOf = int32(n)
+				row.SharePts /= float64(n)
+			}
 			ig.SharePts += row.SharePts
 			ig.Projects = append(ig.Projects, row)
 		}

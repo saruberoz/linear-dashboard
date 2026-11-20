@@ -57,6 +57,9 @@ service DashboardService {
   rpc ListMissingTimeline(ListMissingTimelineRequest) returns (ListMissingTimelineResponse) {
     option (google.api.http) = {get: "/v1/missing-timeline"};
   }
+  rpc ListUnassignedTasks(ListUnassignedTasksRequest) returns (ListUnassignedTasksResponse) {
+    option (google.api.http) = {get: "/v1/unassigned-tasks"};
+  }
   // Projects with no tasks at all. Not date-filtered: they have no tasks.
   rpc ListProjectsWithoutTasks(ListProjectsWithoutTasksRequest) returns (ListProjectsWithoutTasksResponse) {
     option (google.api.http) = {get: "/v1/projects-without-tasks"};
@@ -149,6 +152,9 @@ message ProjectRow {
   repeated string hidden_initiatives = 12; // names of non-[W]/[WS] initiatives (sprints, buckets) it belongs to
   string start_date = 13; // YYYY-MM-DD, "" when not set in Linear
   string target_date = 14; // YYYY-MM-DD, "" when not set in Linear
+  // Segment view only: >1 when the project sits under that many initiatives
+  // there, and share_pts is further divided by it so subtotals add up.
+  int32 initiative_split_of = 15;
 }
 
 message TaskRow {
@@ -219,6 +225,7 @@ message GetMenuResponse {
   int32 no_project_task_count = 8;
   int32 missing_timeline_count = 9; // canceled projects left out
   int32 empty_project_count = 10; // canceled projects left out
+  int32 unassigned_task_count = 11; // unassigned tasks with effort in range
 }
 
 // ---------- overview ----------
@@ -236,6 +243,8 @@ message SegmentShare {
   int32 projects = 5;
   int32 shared = 6; // projects also tagged with another segment
   StatusSplit status = 7;
+  int32 contributors = 8; // distinct assignees with a non-canceled task in range; unassigned excluded
+  double pts_per_contributor = 9; // assigned pts / contributors (unassigned effort left out), 0 when there are none
 }
 
 message WarningSummary {
@@ -264,7 +273,7 @@ message InitiativeGroup {
   string id = 1; // "" for "No initiative"
   string name = 2;
   string url = 3;
-  double share_pts = 4;
+  double share_pts = 4; // sum of its rows' share_pts; the groups add up to the segment total
   repeated ProjectRow projects = 5;
 }
 
@@ -404,6 +413,18 @@ message ListTasksWithoutProjectRequest {
 message ListTasksWithoutProjectResponse {
   int32 total = 1;
   repeated AssigneeGroup groups = 2; // largest group first
+}
+
+message ListUnassignedTasksRequest {
+  string from = 1;
+  string to = 2;
+}
+
+// Open tasks in range with no assignee that count more than 0 pts, largest first.
+message ListUnassignedTasksResponse {
+  int32 total = 1;
+  double pts = 2;
+  repeated TaskRow tasks = 3;
 }
 
 message ListMissingTimelineRequest {

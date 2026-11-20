@@ -30,6 +30,7 @@ const OperationDashboardServiceListProjectsWithoutTasks = "/dashboard.v1.Dashboa
 const OperationDashboardServiceListSegmentLabelWarnings = "/dashboard.v1.DashboardService/ListSegmentLabelWarnings"
 const OperationDashboardServiceListTasks = "/dashboard.v1.DashboardService/ListTasks"
 const OperationDashboardServiceListTasksWithoutProject = "/dashboard.v1.DashboardService/ListTasksWithoutProject"
+const OperationDashboardServiceListUnassignedTasks = "/dashboard.v1.DashboardService/ListUnassignedTasks"
 const OperationDashboardServiceListUntaggedProjects = "/dashboard.v1.DashboardService/ListUntaggedProjects"
 
 type DashboardServiceHTTPServer interface {
@@ -53,6 +54,7 @@ type DashboardServiceHTTPServer interface {
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
 	// ListTasksWithoutProject Open tasks in range with no project, grouped by assignee.
 	ListTasksWithoutProject(context.Context, *ListTasksWithoutProjectRequest) (*ListTasksWithoutProjectResponse, error)
+	ListUnassignedTasks(context.Context, *ListUnassignedTasksRequest) (*ListUnassignedTasksResponse, error)
 	ListUntaggedProjects(context.Context, *ListUntaggedProjectsRequest) (*ListUntaggedProjectsResponse, error)
 }
 
@@ -71,6 +73,7 @@ func RegisterDashboardServiceHTTPServer(s *http.Server, srv DashboardServiceHTTP
 	r.Handle("GET", "/v1/initiatives-without-projects", _DashboardService_ListInitiativesWithoutProjects0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/tasks-without-project", _DashboardService_ListTasksWithoutProject0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/missing-timeline", _DashboardService_ListMissingTimeline0_HTTP_Handler(srv))
+	r.Handle("GET", "/v1/unassigned-tasks", _DashboardService_ListUnassignedTasks0_HTTP_Handler(srv))
 	r.Handle("GET", "/v1/projects-without-tasks", _DashboardService_ListProjectsWithoutTasks0_HTTP_Handler(srv))
 }
 
@@ -330,6 +333,25 @@ func _DashboardService_ListMissingTimeline0_HTTP_Handler(srv DashboardServiceHTT
 	}
 }
 
+func _DashboardService_ListUnassignedTasks0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListUnassignedTasksRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationDashboardServiceListUnassignedTasks)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListUnassignedTasks(ctx, req.(*ListUnassignedTasksRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListUnassignedTasksResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _DashboardService_ListProjectsWithoutTasks0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in ListProjectsWithoutTasksRequest
@@ -370,6 +392,7 @@ type DashboardServiceHTTPClient interface {
 	ListTasks(ctx context.Context, req *ListTasksRequest, opts ...http.CallOption) (rsp *ListTasksResponse, err error)
 	// ListTasksWithoutProject Open tasks in range with no project, grouped by assignee.
 	ListTasksWithoutProject(ctx context.Context, req *ListTasksWithoutProjectRequest, opts ...http.CallOption) (rsp *ListTasksWithoutProjectResponse, err error)
+	ListUnassignedTasks(ctx context.Context, req *ListUnassignedTasksRequest, opts ...http.CallOption) (rsp *ListUnassignedTasksResponse, err error)
 	ListUntaggedProjects(ctx context.Context, req *ListUntaggedProjectsRequest, opts ...http.CallOption) (rsp *ListUntaggedProjectsResponse, err error)
 }
 
@@ -587,6 +610,22 @@ func (c *DashboardServiceHTTPClientImpl) ListTasksWithoutProject(ctx context.Con
 	opts = append([]http.CallOption{
 		http.Accept("application/protojson"),
 		http.Operation(OperationDashboardServiceListTasksWithoutProject),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *DashboardServiceHTTPClientImpl) ListUnassignedTasks(ctx context.Context, in *ListUnassignedTasksRequest, opts ...http.CallOption) (*ListUnassignedTasksResponse, error) {
+	var out ListUnassignedTasksResponse
+	pattern := "/v1/unassigned-tasks"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationDashboardServiceListUnassignedTasks),
 		http.PathTemplate(pattern),
 	}, opts...)
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)

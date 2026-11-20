@@ -2,7 +2,7 @@
 
 *   **Author:** Wilson Sumanang
 *   **Status:** Implemented (see "As built")
-*   **Date:** 2026-11-17, updated 2026-11-18 (see "Changes after launch")
+*   **Date:** 2026-11-17, updated 2026-11-20 (see "Changes after launch")
 *   **Review:** EGM review finished on 2026-11-17 (Stages 5–9). The author
     concluded it **with findings still open**. The implementation plan is not
     ready to build from: 6 Blockers in Stage 9. The review reports and the
@@ -161,6 +161,34 @@ Where this section and the rest of the document disagree, this section wins.
         `targetDate`. Migration `000004_timelines` stores them as nullable
         `STRING` columns (`YYYY-MM-DD`). `ProjectRow` gains `start_date` and
         `target_date`.
+
+### Changes after launch (2026-11-20)
+
+*   **Initiative subtotals on a segment page add up to the segment total.**
+    A project listed under N shown initiatives on a segment page gives each
+    of them 1/N of its segment share, instead of its full share to each. This
+    replaces the "counts fully in each" rule for segment pages (author's
+    decision). Initiative pages still show each project at its real total.
+    *   `ProjectRow` gains `initiative_split_of` (>1 only on a segment page),
+        and `share_pts` is divided by it there.
+    *   The row note reads, for example, "1/4 of 12 · 2 initiatives" when a
+        project is split across 2 segments and 2 initiatives.
+    *   Segment percentages are unchanged: they never used initiatives.
+*   **Avg effort per person** on the "Effort share by segment" table, between
+    Effort and Status: the segment's assigned effort ÷ its contributors. A
+    contributor is a distinct assignee with at least one non-canceled task in
+    range in the segment's projects. Unassigned tasks count in neither the
+    effort nor the people; the Effort and Share columns still include them. A
+    person on a multi-segment project counts in each of its segments, and the
+    project's assigned effort is split 1/N as usual. `SegmentShare` gains
+    `contributors` and `pts_per_contributor`.
+*   **Unassigned with effort** housekeeping page
+    (`GET /v1/unassigned-tasks`): open tasks in range with no assignee that
+    count more than 0 pts, with or without a project, largest effort first.
+    The menu shows their count (`unassigned_task_count`).
+*   **Contributor count** next to the Contributors table title: its rows,
+    leaving out Unassigned. On a segment page it equals that segment's
+    contributor count on the overview.
 
 ### Simplifications adopted from the review
 
@@ -565,7 +593,7 @@ is covered by table-driven tests built from the cases found in the real data.
 | In range | task, from, to (Asia/Jakarta, inclusive) | created in range, or completed in range, or started on or before the end and not completed or canceled before the start |
 | Status bucket | Linear state type | completed → Done; started → In progress; backlog, unstarted or triage → Not started; canceled or duplicate → Canceled |
 | Visible initiative | initiative name | the name starts with `[W]` or `[WS]`, ignoring case and spaces |
-| Initiative total | its projects | the full total of each of its projects. A project in two shown initiatives counts in full in both, so every view that lists initiatives shows the note "A project in more than one initiative counts fully in each, so initiative totals can add up to more than the total above." (author's decision) |
+| Initiative total | its projects | on an initiative page, the full total of each of its projects. On a segment page, each project's segment share split evenly across the shown initiatives it is listed under, so the subtotals add up to the segment total (author's decision, 2026-11-20) |
 | Label share | task labels | a task's effort is split evenly across its labels; tasks with no label are counted separately as "No label" |
 | Task-label warning | task labels | the task carries a segment-named task label. It is reported, never counted. |
 

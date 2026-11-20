@@ -76,6 +76,46 @@ func TestOverviewSharesAddUpToTaggedTotal(t *testing.T) {
 	}
 }
 
+func TestOverviewEffortPerContributor(t *testing.T) {
+	d, r := fixture(t)
+	o := d.Overview(r)
+	// B2B: shared (alice, bob), 6 pts. B2C: shared + solo (alice, bob; t4 is unassigned), 8 pts.
+	want := map[string]struct {
+		n   int32
+		avg float64
+	}{"B2B": {2, 3}, "B2G": {0, 0}, "B2BNG": {0, 0}, "B2C": {2, 4}, "INTERNAL": {0, 0}}
+	for _, s := range o.Segments {
+		w := want[s.Key]
+		if s.Contributors != w.n || !near(s.PtsPerContributor, w.avg) {
+			t.Errorf("%s contributors=%d avg=%v, want %d and %v", s.Key, s.Contributors, s.PtsPerContributor, w.n, w.avg)
+		}
+	}
+}
+
+func TestEffortPerContributorLeavesOutUnassignedEffort(t *testing.T) {
+	nov := at("2026-11-05 10:00")
+	labels := []Label{{ID: "lb2b", Kind: "project", Name: "B2B"}}
+	tasks := []Task{
+		{ID: "a", TeamID: "est", ProjectID: "p", AssigneeID: "alice", StateType: "backlog", Estimate: ptr(4.0), CreatedAt: nov},
+		{ID: "b", TeamID: "est", ProjectID: "p", AssigneeID: "bob", StateType: "backlog", Estimate: ptr(2.0), CreatedAt: nov},
+		{ID: "u", TeamID: "est", ProjectID: "p", StateType: "backlog", Estimate: ptr(10.0), CreatedAt: nov},
+	}
+	teams := []Team{{ID: "est", EstimationType: "linear"}}
+	Derive(tasks, map[string]Team{"est": teams[0]}, map[string]Label{"lb2b": labels[0]})
+	d := NewDataset(time.Now(), teams, nil, labels, nil,
+		[]Project{{ID: "p", Name: "P", CreatedAt: nov, LabelIDs: []string{"lb2b"}}}, tasks)
+	r, _ := ParseRange("2026-11-01", "2026-11-30", jakarta)
+	for _, s := range d.Overview(r).Segments {
+		if s.Key != "B2B" {
+			continue
+		}
+		// Effort keeps the unassigned 10; the average is (4+2) / 2 people.
+		if !near(s.Pts, 16) || s.Contributors != 2 || !near(s.PtsPerContributor, 3) {
+			t.Errorf("B2B pts=%v people=%d avg=%v, want 16, 2, 3", s.Pts, s.Contributors, s.PtsPerContributor)
+		}
+	}
+}
+
 func TestSegmentViewSplitsSharedProjects(t *testing.T) {
 	d, r := fixture(t)
 	s, err := d.Segment("B2B", r)
@@ -93,6 +133,41 @@ func TestSegmentViewSplitsSharedProjects(t *testing.T) {
 	row := s.Groups[0].Projects[0]
 	if !near(row.Pts, 12) || !near(row.SharePts, 6) || row.SplitOf != 2 {
 		t.Errorf("project row pts=%v share=%v split=%d, want 12/6/2", row.Pts, row.SharePts, row.SplitOf)
+	}
+}
+
+func TestSegmentViewInitiativeSubtotalsAddUpToSegmentTotal(t *testing.T) {
+	d, r := fixture(t)
+	d.Initiatives["iw2"] = &Initiative{ID: "iw2", Name: "[W] Second", Visible: true, ProjectIDs: []string{"shared"}}
+	d.Projects["shared"].InitiativeIDs = append(d.Projects["shared"].InitiativeIDs, "iw2")
+
+	s, err := d.Segment("B2C", r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// B2C: shared 12 pts split across 2 segments = 6, then across 2 initiatives = 3 each; solo 2.
+	want := map[string]float64{"[W] Protection": 3, "[W] Second": 3, "No initiative": 2}
+	var sum float64
+	for _, g := range s.Groups {
+		if !near(g.SharePts, want[g.Name]) {
+			t.Errorf("group %q share = %v, want %v", g.Name, g.SharePts, want[g.Name])
+		}
+		var rows float64
+		for _, p := range g.Projects {
+			rows += p.SharePts
+		}
+		if !near(rows, g.SharePts) {
+			t.Errorf("group %q rows add up to %v, subtotal is %v", g.Name, rows, g.SharePts)
+		}
+		sum += g.SharePts
+	}
+	if !near(sum, s.Summary.Total) {
+		t.Errorf("initiative subtotals sum to %v, segment total is %v", sum, s.Summary.Total)
+	}
+	row := s.Groups[0].Projects[0]
+	if !near(row.Pts, 12) || !near(row.SharePts, 3) || row.SplitOf != 2 || row.InitiativeSplitOf != 2 {
+		t.Errorf("row pts=%v share=%v split=%d initiativeSplit=%d, want 12/3/2/2",
+			row.Pts, row.SharePts, row.SplitOf, row.InitiativeSplitOf)
 	}
 }
 

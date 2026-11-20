@@ -102,6 +102,14 @@ async function loadView(
             range
           ),
         }
+      case "unassigned":
+        return {
+          kind,
+          data: await serverGet<T.UnassignedTasksResponse>(
+            "unassigned-tasks",
+            range
+          ),
+        }
       case "notimeline":
         return {
           kind,

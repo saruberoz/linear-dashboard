@@ -371,11 +371,7 @@ function ProjectTable({
                 {fmt(split ? p.sharePts : p.pts)}
               </span>{" "}
               pts
-              {split && p.splitOf > 1 && (
-                <div className="text-[11px] text-muted-foreground">
-                  {p.splitOf === 2 ? "half" : `1/${p.splitOf}`} of {fmt(p.pts)}
-                </div>
-              )}
+              {split && <SplitNote p={p} />}
             </TableCell>
             <TableCell>
               <MiniStatus status={p.status} />
@@ -398,6 +394,27 @@ function ProjectTable({
         )}
       </TableBody>
     </Table>
+  )
+}
+
+/** "half of 12" / "1/4 of 12 · 2 initiatives": how a split row's share was cut. */
+function SplitNote({ p }: { p: T.ProjectRow }) {
+  const segs = p.splitOf > 1 ? p.splitOf : 1
+  const inis = (p.initiativeSplitOf ?? 0) > 1 ? p.initiativeSplitOf! : 1
+  const n = segs * inis
+  if (n === 1) return null
+  const why = [
+    segs > 1 && `${segs} segments`,
+    inis > 1 && `${inis} initiatives`,
+  ].filter(Boolean)
+  return (
+    <div
+      className="text-[11px] text-muted-foreground"
+      title={`${fmt(p.pts)} pts split evenly across ${why.join(" and ")}`}
+    >
+      {n === 2 ? "half" : `1/${n}`} of {fmt(p.pts)}
+      {inis > 1 && ` · ${inis} initiatives`}
+    </div>
   )
 }
 
@@ -469,6 +486,12 @@ function OverviewView({ d, range }: { d: T.OverviewResponse; range: Range }) {
               <TableHead>Segment</TableHead>
               <TableHead className="text-right">Share</TableHead>
               <TableHead className="text-right">Effort</TableHead>
+              <TableHead
+                className="text-right"
+                title="Assigned effort ÷ people with a task in the segment. Unassigned tasks count in neither; see Unassigned with effort."
+              >
+                Avg effort / person
+              </TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Projects</TableHead>
               <TableHead className="text-right">
@@ -493,6 +516,19 @@ function OverviewView({ d, range }: { d: T.OverviewResponse; range: Range }) {
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {fmt(s.pts)} pts
+                </TableCell>
+                <TableCell className="text-right whitespace-nowrap tabular-nums">
+                  {s.contributors ? (
+                    <>
+                      {fmt(s.ptsPerContributor)} pts
+                      <div className="text-[11px] text-muted-foreground">
+                        {s.contributors}{" "}
+                        {s.contributors === 1 ? "person" : "people"}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground/60">–</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <MiniStatus status={s.status} />
@@ -552,7 +588,7 @@ function SegmentView({
       />
       <ItemsCard
         title="Initiatives and projects"
-        description="Only [W] / [WS] initiatives · a project in more than one initiative counts fully in each, so initiative totals can add up to more than the total above"
+        description="Only [W] / [WS] initiatives · a project in more than one initiative is split evenly between them, so initiative totals add up to the total above"
         action={
           d.groups.length > 0 && (
             <Button
@@ -963,6 +999,33 @@ function NoProjectTasksView({ d }: { d: T.AssigneeGroupsResponse }) {
   )
 }
 
+function UnassignedTasksView({ d }: { d: T.UnassignedTasksResponse }) {
+  return (
+    <>
+      <Title meta="Open tasks in this range that count points but have no assignee, largest effort first. Their effort counts in segment totals but not in avg effort per person. Assign them in Linear. Canceled tasks are left out.">
+        Unassigned tasks with effort
+      </Title>
+      {d.tasks.length ? (
+        <ItemsCard
+          title={`${d.total} task${d.total > 1 ? "s" : ""}`}
+          description={`${fmt(d.pts)} pts with no one assigned`}
+        >
+          <TaskList tasks={d.tasks} showProject />
+        </ItemsCard>
+      ) : (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Every task with effort has an assignee</EmptyTitle>
+            <EmptyDescription>
+              No open task in this range counts points without an assignee.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </>
+  )
+}
+
 function MissingTimelineView({ d }: { d: T.MissingTimelineResponse }) {
   return (
     <>
@@ -1142,6 +1205,7 @@ function useCrumbs(
         noinit: "Projects without initiative",
         emptyinit: "Initiatives without projects",
         noproject: "Tasks without project",
+        unassigned: "Unassigned tasks with effort",
         notasks: "Projects without tasks",
         notimeline: "Missing timeline",
         dashboard:
@@ -1212,6 +1276,9 @@ export function Dashboard({
       break
     case "noproject":
       body = <NoProjectTasksView d={view.data} />
+      break
+    case "unassigned":
+      body = <UnassignedTasksView d={view.data} />
       break
     case "notasks":
       body = (

@@ -17,6 +17,7 @@ import {
   TagIcon,
   TargetIcon,
   TriangleAlertIcon,
+  UserXIcon,
 } from "lucide-react"
 import {
   Sidebar,
@@ -136,6 +137,13 @@ export function AppSidebar({
       label: "Tasks without project",
       icon: ListXIcon,
       count: menu?.noProjectTaskCount,
+      warn: false,
+    },
+    {
+      scope: "unassigned",
+      label: "Unassigned with effort",
+      icon: UserXIcon,
+      count: menu?.unassignedTaskCount,
       warn: false,
     },
     {

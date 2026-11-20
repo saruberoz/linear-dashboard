@@ -37,6 +37,37 @@ func (d *Dataset) TasksWithoutProject(r Range) *pb.ListTasksWithoutProjectRespon
 	return &pb.ListTasksWithoutProjectResponse{Total: int32(len(tasks)), Groups: d.byAssignee(tasks)}
 }
 
+func (d *Dataset) unassignedTasks(r Range) []*Task {
+	var out []*Task
+	for i := range d.Tasks {
+		t := &d.Tasks[i]
+		if t.AssigneeID == "" && t.EffectivePts > 0 && t.Status() != StatusCanceled && r.InRange(t) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// UnassignedTasks lists the open tasks in r with no assignee that count more
+// than 0 pts, with or without a project, largest effort first. Their effort
+// counts in segment totals but not in effort per person.
+func (d *Dataset) UnassignedTasks(r Range) *pb.ListUnassignedTasksResponse {
+	res := &pb.ListUnassignedTasksResponse{}
+	for _, t := range d.unassignedTasks(r) {
+		res.Tasks = append(res.Tasks, d.taskRow(t, t.EffectivePts, 0))
+		res.Pts += t.EffectivePts
+	}
+	res.Total = int32(len(res.Tasks))
+	sort.SliceStable(res.Tasks, func(i, j int) bool {
+		a, b := res.Tasks[i], res.Tasks[j]
+		if a.CountedPts != b.CountedPts {
+			return a.CountedPts > b.CountedPts
+		}
+		return identifierLess(a.Identifier, b.Identifier)
+	})
+	return res
+}
+
 func (d *Dataset) projectsWithoutTimeline(r Range) []*Project {
 	var out []*Project
 	for _, p := range d.Projects {

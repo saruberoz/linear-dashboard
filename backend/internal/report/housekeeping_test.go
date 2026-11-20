@@ -116,3 +116,32 @@ func equal(a, b []string) bool {
 	}
 	return true
 }
+
+func TestUnassignedTasksWithEffort(t *testing.T) {
+	nov, sep := at("2026-11-05 10:00"), at("2026-09-05 10:00")
+	d := build([]Project{{ID: "p", Name: "P", CreatedAt: nov}}, nil, []Task{
+		{ID: "small", Identifier: "X-1", TeamID: "est", ProjectID: "p", StateType: "backlog", Estimate: ptr(2.0), CreatedAt: nov},
+		{ID: "big", Identifier: "X-2", TeamID: "est", StateType: "started", Estimate: ptr(5.0), CreatedAt: nov, StartedAt: ptr(nov)},
+		{ID: "assigned", TeamID: "est", ProjectID: "p", AssigneeID: "alice", StateType: "backlog", Estimate: ptr(3.0), CreatedAt: nov},
+		{ID: "noestimate", TeamID: "est", ProjectID: "p", StateType: "backlog", CreatedAt: nov},
+		{ID: "parent", TeamID: "est", ProjectID: "p", StateType: "backlog", Estimate: ptr(8.0), CreatedAt: nov},
+		{ID: "child", Identifier: "X-3", TeamID: "est", ProjectID: "p", ParentID: "parent", AssigneeID: "alice", StateType: "backlog", Estimate: ptr(1.0), CreatedAt: nov},
+		{ID: "canceled", TeamID: "est", StateType: "canceled", Estimate: ptr(4.0), CreatedAt: nov, CanceledAt: ptr(nov)},
+		{ID: "old", TeamID: "est", StateType: "completed", Estimate: ptr(4.0), CreatedAt: sep, CompletedAt: ptr(sep)},
+	})
+	r := housekeepingRange(t)
+	res := d.UnassignedTasks(r)
+	var ids []string
+	for _, x := range res.Tasks {
+		ids = append(ids, x.Id)
+	}
+	if len(ids) != 2 || ids[0] != "big" || ids[1] != "small" || !near(res.Pts, 7) || res.Total != 2 {
+		t.Errorf("tasks %v pts %v total %d, want [big small], 7 pts, 2", ids, res.Pts, res.Total)
+	}
+	if res.Tasks[1].ProjectName != "P" {
+		t.Errorf("project name %q, want P", res.Tasks[1].ProjectName)
+	}
+	if n := d.Menu(r).UnassignedTaskCount; n != 2 {
+		t.Errorf("menu count = %d, want 2", n)
+	}
+}
