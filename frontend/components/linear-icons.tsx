@@ -82,6 +82,44 @@ export function StatusIcon({ status }: { status: string }) {
       </svg>
     )
   }
+  if (status === "planned") {
+    return (
+      <svg
+        viewBox="0 0 14 14"
+        className="size-3.5 shrink-0 text-muted-foreground"
+        aria-hidden
+      >
+        <circle
+          cx="7"
+          cy="7"
+          r="5.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      </svg>
+    )
+  }
+  if (status === "paused") {
+    return (
+      <svg viewBox="0 0 14 14" className="size-3.5 shrink-0" aria-hidden>
+        <circle
+          cx="7"
+          cy="7"
+          r="5.5"
+          fill="none"
+          stroke="var(--st-progress)"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M5.6 4.8v4.4M8.4 4.8v4.4"
+          stroke="var(--st-progress)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
+  }
   if (status === "canceled") {
     return (
       <svg
@@ -115,6 +153,35 @@ export function StatusIcon({ status }: { status: string }) {
         strokeDasharray="2.2 1.8"
       />
     </svg>
+  )
+}
+
+// Linear initiative statuses and project states, keyed lower-case, with the
+// StatusIcon glyph each one uses.
+const PLAN_STATUS: Record<string, { label: string; glyph: string }> = {
+  proposed: { label: "Proposed", glyph: "backlog" },
+  backlog: { label: "Backlog", glyph: "backlog" },
+  planned: { label: "Planned", glyph: "planned" },
+  active: { label: "Active", glyph: "in_progress" },
+  started: { label: "In progress", glyph: "in_progress" },
+  paused: { label: "Paused", glyph: "paused" },
+  completed: { label: "Completed", glyph: "done" },
+  canceled: { label: "Canceled", glyph: "canceled" },
+}
+
+/** The display name of an initiative status or project state. */
+export function planStatusLabel(status: string): string {
+  return PLAN_STATUS[status.toLowerCase()]?.label ?? status
+}
+
+/** The status glyph of an initiative or project, named for screen readers. */
+export function PlanStatusIcon({ status }: { status: string }) {
+  if (!status) return null
+  const glyph = PLAN_STATUS[status.toLowerCase()]?.glyph ?? "backlog"
+  return (
+    <span role="img" aria-label={planStatusLabel(status)} className="flex">
+      <StatusIcon status={glyph} />
+    </span>
   )
 }
 

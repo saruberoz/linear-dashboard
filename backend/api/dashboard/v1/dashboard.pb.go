@@ -937,6 +937,7 @@ type InitiativeRef struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Url           string                 `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // Linear initiative status: Proposed, Planned, Active, Completed, Canceled
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -988,6 +989,13 @@ func (x *InitiativeRef) GetName() string {
 func (x *InitiativeRef) GetUrl() string {
 	if x != nil {
 		return x.Url
+	}
+	return ""
+}
+
+func (x *InitiativeRef) GetStatus() string {
+	if x != nil {
+		return x.Status
 	}
 	return ""
 }
@@ -1109,6 +1117,7 @@ type MenuInitiative struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // "" for "No initiative"
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Projects      []*MenuProject         `protobuf:"bytes,3,rep,name=projects,proto3" json:"projects,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // Linear initiative status, "" for "No initiative"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1162,6 +1171,13 @@ func (x *MenuInitiative) GetProjects() []*MenuProject {
 		return x.Projects
 	}
 	return nil
+}
+
+func (x *MenuInitiative) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
 }
 
 type MenuSegment struct {
@@ -3930,22 +3946,24 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\bhas_days\x18\x15 \x01(\bR\ahasDays\x12\x12\n" +
 	"\x04days\x18\x16 \x01(\x01R\x04days\x12\x1f\n" +
 	"\vsplit_count\x18\x17 \x01(\x05R\n" +
-	"splitCount\"E\n" +
+	"splitCount\"]\n" +
 	"\rInitiativeRef\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
-	"\x03url\x18\x03 \x01(\tR\x03url\"J\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\"J\n" +
 	"\x0eGetMenuRequest\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
 	"\x02to\x18\x02 \x01(\tR\x02to\x12\x14\n" +
 	"\x05teams\x18\x03 \x03(\tR\x05teams\"1\n" +
 	"\vMenuProject\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"k\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\x83\x01\n" +
 	"\x0eMenuInitiative\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x125\n" +
-	"\bprojects\x18\x03 \x03(\v2\x19.dashboard.v1.MenuProjectR\bprojects\"\x9a\x01\n" +
+	"\bprojects\x18\x03 \x03(\v2\x19.dashboard.v1.MenuProjectR\bprojects\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\"\x9a\x01\n" +
 	"\vMenuSegment\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12#\n" +

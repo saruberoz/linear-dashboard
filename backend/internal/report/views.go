@@ -135,7 +135,7 @@ func (d *Dataset) Menu(r Range) *pb.GetMenuResponse {
 		ps := d.TaggedProjects(r, s.Key)
 		ms := &pb.MenuSegment{Key: s.Key, Label: s.Label, ProjectCount: int32(len(ps))}
 		for _, g := range d.groupByInitiative(ps) {
-			mi := &pb.MenuInitiative{Id: g.id, Name: g.name}
+			mi := &pb.MenuInitiative{Id: g.id, Name: g.name, Status: g.status}
 			for _, p := range g.projects {
 				mi.Projects = append(mi.Projects, &pb.MenuProject{Id: p.ID, Name: p.Name})
 			}
@@ -157,8 +157,8 @@ func (d *Dataset) Menu(r Range) *pb.GetMenuResponse {
 }
 
 type initiativeGroup struct {
-	id, name, url string
-	projects      []*Project
+	id, name, url, status string
+	projects              []*Project
 }
 
 // groupByInitiative groups projects under their visible initiatives (a project
@@ -179,7 +179,7 @@ func (d *Dataset) groupByInitiative(ps []*Project) []*initiativeGroup {
 		for _, ini := range inis {
 			g := byID[ini.ID]
 			if g == nil {
-				g = &initiativeGroup{id: ini.ID, name: ini.Name, url: ini.URL}
+				g = &initiativeGroup{id: ini.ID, name: ini.Name, url: ini.URL, status: ini.Status}
 				byID[ini.ID] = g
 			}
 			g.projects = append(g.projects, p)
@@ -313,7 +313,7 @@ func (d *Dataset) Initiative(id string, r Range) (*pb.GetInitiativeResponse, err
 	ws, _ := d.scopeTasks(sc, r)
 	ini := d.Initiatives[id]
 	res := &pb.GetInitiativeResponse{
-		Initiative: &pb.InitiativeRef{Id: ini.ID, Name: ini.Name, Url: ini.URL},
+		Initiative: &pb.InitiativeRef{Id: ini.ID, Name: ini.Name, Url: ini.URL, Status: ini.Status},
 		Summary:    d.summarize(ws, false),
 	}
 	segs := map[string]bool{}
@@ -341,7 +341,7 @@ func (d *Dataset) Project(id string, r Range) (*pb.GetProjectResponse, error) {
 	ws, _ := d.scopeTasks(Scope{Kind: "project", ID: id}, r)
 	res := &pb.GetProjectResponse{Project: d.projectRow(p, r, ""), Summary: d.summarize(ws, false)}
 	for _, ini := range d.VisibleInitiativesOf(p) {
-		res.Initiatives = append(res.Initiatives, &pb.InitiativeRef{Id: ini.ID, Name: ini.Name, Url: ini.URL})
+		res.Initiatives = append(res.Initiatives, &pb.InitiativeRef{Id: ini.ID, Name: ini.Name, Url: ini.URL, Status: ini.Status})
 	}
 	shown := map[string]bool{}
 	for _, x := range ws {

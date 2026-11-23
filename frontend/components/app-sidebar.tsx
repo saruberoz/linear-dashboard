@@ -41,7 +41,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { SegmentDot } from "@/components/linear-icons"
+import {
+  PlanStatusIcon,
+  SegmentDot,
+  planStatusLabel,
+} from "@/components/linear-icons"
 import { SEG } from "@/lib/constants"
 import type { DashboardSummary, MenuResponse } from "@/lib/types"
 import { clientFetch } from "@/lib/api"
@@ -281,11 +285,18 @@ export function AppSidebar({
                                       render={
                                         <Link
                                           href={link(iid, { via: id })}
-                                          title={ini.name}
+                                          title={
+                                            ini.status
+                                              ? `${ini.name} · ${planStatusLabel(ini.status)}`
+                                              : ini.name
+                                          }
                                         />
                                       }
                                       className="flex-1"
                                     >
+                                      <PlanStatusIcon
+                                        status={ini.status ?? ""}
+                                      />
                                       <span>{ini.name}</span>
                                     </SidebarMenuSubButton>
                                   )}

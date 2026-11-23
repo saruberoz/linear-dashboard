@@ -188,6 +188,7 @@ message InitiativeRef {
   string id = 1;
   string name = 2;
   string url = 3;
+  string status = 4; // Linear initiative status: Proposed, Planned, Active, Completed, Canceled
 }
 
 // ---------- menu ----------
@@ -207,6 +208,7 @@ message MenuInitiative {
   string id = 1; // "" for "No initiative"
   string name = 2;
   repeated MenuProject projects = 3;
+  string status = 4; // Linear initiative status, "" for "No initiative"
 }
 
 message MenuSegment {

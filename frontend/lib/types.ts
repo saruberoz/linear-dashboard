@@ -108,6 +108,7 @@ export interface InitiativeRef {
   id: string
   name: string
   url: string
+  status?: string
 }
 
 export interface MenuSegment {
@@ -117,6 +118,7 @@ export interface MenuSegment {
   initiatives: {
     id: string
     name: string
+    status?: string
     projects: { id: string; name: string }[]
   }[]
 }

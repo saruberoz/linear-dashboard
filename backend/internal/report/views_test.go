@@ -3,6 +3,7 @@ package report
 import (
 	"errors"
 	"math"
+	"slices"
 	"testing"
 	"time"
 )
@@ -39,7 +40,7 @@ func fixture(t *testing.T) (*Dataset, Range) {
 	d := NewDataset(time.Now(), teams,
 		[]User{{ID: "alice", DisplayName: "alice"}, {ID: "bob", DisplayName: "bob"}},
 		labels,
-		[]Initiative{{ID: "iw", Name: "[W] Protection"}, {ID: "isprint", Name: "46.Cloud Sprint"}},
+		[]Initiative{{ID: "iw", Name: "[W] Protection", Status: "Active"}, {ID: "isprint", Name: "46.Cloud Sprint"}},
 		[]Project{
 			{ID: "shared", Name: "Shared", CreatedAt: nov, LabelIDs: []string{"lb2b", "lb2c"}, InitiativeIDs: []string{"iw"}},
 			{ID: "solo", Name: "Solo", CreatedAt: nov, LabelIDs: []string{"lb2c"}, InitiativeIDs: []string{"isprint"}},
@@ -229,6 +230,26 @@ func TestHiddenInitiativesAndNoInitiativeGroup(t *testing.T) {
 	}
 	if _, err := d.Initiative("isprint", r); !errors.Is(err, ErrNotFound) {
 		t.Errorf("hidden initiative err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestInitiativeStatusInMenuAndPage(t *testing.T) {
+	d, r := fixture(t)
+	var got []string
+	for _, s := range d.Menu(r).Segments {
+		for _, ini := range s.Initiatives {
+			got = append(got, ini.Name+"="+ini.Status)
+		}
+	}
+	if !slices.Contains(got, "[W] Protection=Active") || !slices.Contains(got, "No initiative=") {
+		t.Errorf("menu initiatives = %v, want [W] Protection=Active and No initiative with no status", got)
+	}
+	res, err := d.Initiative("iw", r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Initiative.Status != "Active" {
+		t.Errorf("initiative page status = %q, want Active", res.Initiative.Status)
 	}
 }
 
