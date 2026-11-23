@@ -169,7 +169,7 @@ export function AppSidebar({
           <div className="flex size-5 items-center justify-center rounded-md bg-primary text-[10px] font-semibold text-primary-foreground">
             P
           </div>
-          <span className="font-medium">PARKEE · Effort</span>
+          <span className="font-medium">Linear Dashboard</span>
         </div>
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />

@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/tooltip"
 import { BackendError, clientFetch } from "@/lib/api"
 import type { SyncInfo } from "@/lib/types"
-import { currentMonth, type Range } from "@/lib/view"
+import { currentMonth, jakartaWeek, type Range } from "@/lib/view"
 import { useDash } from "@/hooks/use-dash"
 import { cn } from "@/lib/utils"
 
@@ -67,6 +67,8 @@ function presets(): [string, string, Range][] {
     new Date(now.getFullYear(), now.getMonth() - 2, 15)
   ).from
   return [
+    ["week", "This week", jakartaWeek(now)],
+    ["lastweek", "Last week", jakartaWeek(now, -1)],
     ["month", "This month", month],
     ["last", "Last month", last],
     ["quarter", "Last 3 months", { from: quarterStart, to: month.to }],

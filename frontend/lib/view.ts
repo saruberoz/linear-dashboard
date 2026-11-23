@@ -20,15 +20,29 @@ export type View =
 
 export type Range = { from: string; to: string }
 
-/** The current month in Asia/Jakarta, as YYYY-MM-DD bounds. */
-export function currentMonth(now = new Date()): Range {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
+const jakartaParts = (now: Date) =>
+  new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now)
-  const [y, m] = ymd.split("-").map(Number)
+  })
+    .format(now)
+    .split("-")
+    .map(Number)
+
+/** The Monday–Sunday week in Asia/Jakarta containing `now`, shifted by `offset` weeks. */
+export function jakartaWeek(now = new Date(), offset = 0): Range {
+  const [y, m, d] = jakartaParts(now)
+  const sinceMonday = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7
+  const start = Date.UTC(y, m - 1, d - sinceMonday + 7 * offset)
+  const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
+  return { from: iso(start), to: iso(start + 6 * 86_400_000) }
+}
+
+/** The current month in Asia/Jakarta, as YYYY-MM-DD bounds. */
+export function currentMonth(now = new Date()): Range {
+  const [y, m] = jakartaParts(now)
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate()
   const mm = String(m).padStart(2, "0")
   return {
