@@ -195,3 +195,18 @@ func TestForTeamsKeepsTheTeamsTasksAndProjects(t *testing.T) {
 		t.Errorf("full dataset changed: %d tasks, want 3", n)
 	}
 }
+
+func TestNewDatasetLeavesOutMeetings(t *testing.T) {
+	nov := at("2026-11-05 10:00")
+	d := build(nil, nil, []Task{
+		{ID: "work", Title: "Build login", TeamID: "est", StateType: "backlog", Estimate: ptr(2.0), CreatedAt: nov},
+		{ID: "standup", Title: "[MEETING] Daily standup", TeamID: "est", StateType: "backlog", Estimate: ptr(1.0), CreatedAt: nov},
+		{ID: "lower", Title: "meeting", TeamID: "est", StateType: "backlog", CreatedAt: nov},
+	})
+	if len(d.Tasks) != 1 || d.Tasks[0].ID != "work" {
+		t.Errorf("tasks = %v, want only work", d.Tasks)
+	}
+	if d.taskByID["standup"] != nil {
+		t.Errorf("meeting task is still indexed")
+	}
+}

@@ -588,7 +588,7 @@ function SegmentView({
       />
       <ItemsCard
         title="Initiatives and projects"
-        description="Only [W] / [WS] initiatives · a project in more than one initiative is split evenly between them, so initiative totals add up to the total above"
+        description="Only [W] / [WS] initiatives, drafts left out · a project in more than one initiative is split evenly between them, so initiative totals add up to the total above"
         action={
           d.groups.length > 0 && (
             <Button
@@ -1102,7 +1102,7 @@ function EmptyInitiativesView({ d }: { d: T.EmptyInitiativesResponse }) {
                     <Badge variant="secondary">[W] / [WS]</Badge>
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      hidden (sprint or bucket)
+                      hidden (sprint, bucket or draft)
                     </span>
                   )}
                 </TableCell>
@@ -1265,7 +1265,7 @@ export function Dashboard({
       body = (
         <ProjectListView
           title="Projects without initiative"
-          meta="Projects active in this range that are in no [W] / [WS] initiative, tagged or not. 'Only in' lists the sprint or bucket initiatives they do belong to."
+          meta="Projects active in this range that are in no [W] / [WS] initiative, tagged or not; draft initiatives don't count. 'Only in' lists the sprint, bucket or draft initiatives they do belong to."
           rows={view.data.projects}
           extra="hidden"
         />

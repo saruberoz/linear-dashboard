@@ -68,7 +68,7 @@ type Initiative struct {
 	Status     string
 	URL        string
 	CreatedAt  time.Time
-	Visible    bool     // name starts with [W] or [WS]
+	Visible    bool     // name starts with [W] or [WS] and is not a draft
 	ProjectIDs []string // all linked projects, tagged or not
 	TargetDate string   // YYYY-MM-DD, "" when not set
 }

@@ -59,11 +59,22 @@ func SegmentLabel(key string) string {
 	return key
 }
 
-var visibleInitiative = regexp.MustCompile(`(?i)^\s*\[\s*(w|ws)\s*\]`)
+var (
+	visibleInitiative = regexp.MustCompile(`(?i)^\s*\[\s*(w|ws)\s*\]`)
+	draftInitiative   = regexp.MustCompile(`(?i)\bdraft\b`)
+	meetingTask       = regexp.MustCompile(`(?i)meeting`)
+)
 
 // IsVisibleInitiative reports whether an initiative is shown: its name starts
-// with [W] or [WS], ignoring case and spaces. Sprints and buckets are hidden.
-func IsVisibleInitiative(name string) bool { return visibleInitiative.MatchString(name) }
+// with [W] or [WS], ignoring case and spaces, and does not contain the word
+// "draft" (not approved yet). Sprints, buckets and drafts are hidden.
+func IsVisibleInitiative(name string) bool {
+	return visibleInitiative.MatchString(name) && !draftInitiative.MatchString(name)
+}
+
+// IsMeeting reports whether a task is a meeting, which the dashboard leaves out
+// entirely: its title contains "meeting" in any case.
+func IsMeeting(title string) bool { return meetingTask.MatchString(title) }
 
 // Bucket maps a Linear state type to a status bucket. "duplicate" counts as canceled.
 func Bucket(stateType string) string {
@@ -88,7 +99,8 @@ func Bucket(stateType string) string {
 // estimated, non-canceled task exists anywhere above it; then it counts 0.
 // Canceled tasks count 0. A task is "missing an estimate" when it has none, is
 // not canceled, its team uses estimates, and no estimated, non-canceled task
-// sits above or below it.
+// sits above or below it. Meeting tasks count 0 and never hide the estimates
+// of tasks above or below them.
 func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 	children := map[string][]int{}
 	index := map[string]int{}
@@ -98,7 +110,7 @@ func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 			children[p] = append(children[p], i)
 		}
 	}
-	estimated := func(t *Task) bool { return t.Estimate != nil && t.Status() != StatusCanceled }
+	estimated := func(t *Task) bool { return t.Estimate != nil && t.Status() != StatusCanceled && !IsMeeting(t.Title) }
 	above := make([]int8, len(tasks)) // 0 unknown, 1 false, 2 true, 3 visiting
 	var hasEstimatedAncestor func(i int) bool
 	hasEstimatedAncestor = func(i int) bool {
@@ -150,13 +162,14 @@ func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 		t := &tasks[i]
 		t.HasEstimatedAncestor = hasEstimatedAncestor(i)
 		canceled := t.Status() == StatusCanceled
+		meeting := IsMeeting(t.Title)
 		switch {
-		case canceled || t.HasEstimatedAncestor || t.Estimate == nil:
+		case canceled || meeting || t.HasEstimatedAncestor || t.Estimate == nil:
 			t.EffectivePts = 0
 		default:
 			t.EffectivePts = *t.Estimate
 		}
-		t.MissingEstimate = t.Estimate == nil && !canceled &&
+		t.MissingEstimate = t.Estimate == nil && !canceled && !meeting &&
 			teams[t.TeamID].EstimationType != "notUsed" && !t.HasEstimatedAncestor && !hasEstimatedDescendant(i)
 		names := make([]string, 0, len(t.LabelIDs))
 		for _, id := range t.LabelIDs {
