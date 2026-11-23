@@ -185,6 +185,32 @@ export function PlanStatusIcon({ status }: { status: string }) {
   )
 }
 
+// The colour each glyph is drawn in, used to tint the status chip.
+const GLYPH_TONE: Record<string, string> = {
+  in_progress: "var(--st-progress)",
+  paused: "var(--st-progress)",
+  done: "var(--st-done)",
+}
+
+/** An initiative status or project state as a tinted chip: icon and name. */
+export function PlanStatusBadge({ status }: { status: string }) {
+  if (!status) return null
+  const glyph = PLAN_STATUS[status.toLowerCase()]?.glyph ?? "backlog"
+  const tone = GLYPH_TONE[glyph] ?? "var(--muted-foreground)"
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap text-foreground"
+      style={{
+        background: `color-mix(in oklab, ${tone} 16%, transparent)`,
+        borderColor: `color-mix(in oklab, ${tone} 35%, transparent)`,
+      }}
+    >
+      <StatusIcon status={glyph} />
+      {planStatusLabel(status)}
+    </span>
+  )
+}
+
 export function SegmentDot({ color }: { color: string }) {
   return (
     <span

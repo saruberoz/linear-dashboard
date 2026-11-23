@@ -49,11 +49,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ContributorsPivot } from "@/components/contributors-pivot"
 import { DateRange, Header, TeamFilter } from "@/components/header"
-import {
-  PlanStatusIcon,
-  SegmentDot,
-  planStatusLabel,
-} from "@/components/linear-icons"
+import { PlanStatusBadge, SegmentDot } from "@/components/linear-icons"
 import {
   Kpi,
   LabelPanel,
@@ -89,7 +85,7 @@ function Title({
   children: React.ReactNode
   meta?: React.ReactNode
   action?: React.ReactNode
-  /** Linear initiative status or project state, shown as an icon after the title. */
+  /** Linear initiative status or project state, shown as a chip after the title. */
   status?: string
 }) {
   return (
@@ -97,14 +93,7 @@ function Title({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="flex min-w-0 items-center gap-2 text-xl font-medium">
           {children}
-          {status && (
-            <Tooltip>
-              <TooltipTrigger render={<span className="flex" />}>
-                <PlanStatusIcon status={status} />
-              </TooltipTrigger>
-              <TooltipContent>{planStatusLabel(status)}</TooltipContent>
-            </Tooltip>
-          )}
+          {status && <PlanStatusBadge status={status} />}
         </h1>
         {action}
       </div>
@@ -746,9 +735,6 @@ function ProjectView({
         meta={
           <>
             <SegBadges segs={p.segments} />
-            <Badge variant="secondary" className="capitalize">
-              {p.state}
-            </Badge>
             {d.initiatives.map((i) => (
               <Link
                 key={i.id}
