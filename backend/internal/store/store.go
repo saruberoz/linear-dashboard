@@ -144,7 +144,7 @@ func copies(ds *report.Dataset) []tableCopy {
 	}
 	issues := tableCopy{table: "issues", columns: []string{"id", "identifier", "title", "url", "team_id", "project_id",
 		"parent_id", "assignee_id", "estimate", "priority", "state_name", "state_type", "created_at", "started_at",
-		"completed_at", "canceled_at", "archived_at", "effective_pts", "has_estimated_descendant",
+		"completed_at", "canceled_at", "archived_at", "effective_pts", "has_estimated_ancestor",
 		"is_missing_estimate", "task_segments", "started_triage_at", "triaged_at"}}
 	ilabels := tableCopy{table: "issue_labels", columns: []string{"issue_id", "label_id"}}
 	for i := range ds.Tasks {
@@ -152,7 +152,7 @@ func copies(ds *report.Dataset) []tableCopy {
 		issues.rows = append(issues.rows, []any{t.ID, t.Identifier, t.Title, t.URL, t.TeamID,
 			nullString(t.ProjectID), nullString(t.ParentID), nullString(t.AssigneeID), t.Estimate, int16(t.Priority),
 			t.StateName, t.StateType, t.CreatedAt, t.StartedAt, t.CompletedAt, t.CanceledAt, t.ArchivedAt,
-			t.EffectivePts, t.HasEstimatedDescendant, t.MissingEstimate, nonNil(t.TaskSegments),
+			t.EffectivePts, t.HasEstimatedAncestor, t.MissingEstimate, nonNil(t.TaskSegments),
 			t.StartedTriageAt, t.TriagedAt})
 		for _, l := range unique(t.LabelIDs) {
 			ilabels.rows = append(ilabels.rows, []any{t.ID, l})
@@ -231,14 +231,14 @@ func (s *Store) Load(ctx context.Context) (*report.Dataset, error) {
 	}
 	const issuesSQL = `SELECT id, identifier, title, url, team_id, COALESCE(project_id, ''), COALESCE(parent_id, ''),
 	  COALESCE(assignee_id, ''), estimate, priority, state_name, state_type, created_at, started_at, completed_at,
-	  canceled_at, archived_at, effective_pts, has_estimated_descendant, is_missing_estimate, task_segments,
+	  canceled_at, archived_at, effective_pts, has_estimated_ancestor, is_missing_estimate, task_segments,
 	  started_triage_at, triaged_at FROM issues`
 	if err := collect(ctx, s.pool, issuesSQL, func(r pgx.Rows) error {
 		var t report.Task
 		var prio int16
 		err := r.Scan(&t.ID, &t.Identifier, &t.Title, &t.URL, &t.TeamID, &t.ProjectID, &t.ParentID, &t.AssigneeID,
 			&t.Estimate, &prio, &t.StateName, &t.StateType, &t.CreatedAt, &t.StartedAt, &t.CompletedAt,
-			&t.CanceledAt, &t.ArchivedAt, &t.EffectivePts, &t.HasEstimatedDescendant, &t.MissingEstimate, &t.TaskSegments,
+			&t.CanceledAt, &t.ArchivedAt, &t.EffectivePts, &t.HasEstimatedAncestor, &t.MissingEstimate, &t.TaskSegments,
 			&t.StartedTriageAt, &t.TriagedAt)
 		t.Priority = int(prio)
 		t.LabelIDs = issueLabels[t.ID]

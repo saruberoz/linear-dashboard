@@ -725,9 +725,9 @@ type TaskRow struct {
 	Labels        []string               `protobuf:"bytes,9,rep,name=labels,proto3" json:"labels,omitempty"`
 	HasEstimate   bool                   `protobuf:"varint,10,opt,name=has_estimate,json=hasEstimate,proto3" json:"has_estimate,omitempty"`
 	Estimate      float64                `protobuf:"fixed64,11,opt,name=estimate,proto3" json:"estimate,omitempty"`
-	CountedPts    float64                `protobuf:"fixed64,12,opt,name=counted_pts,json=countedPts,proto3" json:"counted_pts,omitempty"` // effective points of the task (0 if canceled or deferred)
+	CountedPts    float64                `protobuf:"fixed64,12,opt,name=counted_pts,json=countedPts,proto3" json:"counted_pts,omitempty"` // effective points of the task (0 if canceled or under an estimated parent)
 	SharePts      float64                `protobuf:"fixed64,13,opt,name=share_pts,json=sharePts,proto3" json:"share_pts,omitempty"`       // what this task contributes to the requested number
-	Deferred      bool                   `protobuf:"varint,14,opt,name=deferred,proto3" json:"deferred,omitempty"`                        // own estimate ignored because estimated sub-tasks exist
+	Deferred      bool                   `protobuf:"varint,14,opt,name=deferred,proto3" json:"deferred,omitempty"`                        // own estimate ignored because an issue above it is estimated
 	Missing       bool                   `protobuf:"varint,15,opt,name=missing,proto3" json:"missing,omitempty"`
 	ProjectId     string                 `protobuf:"bytes,16,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	ProjectName   string                 `protobuf:"bytes,17,opt,name=project_name,json=projectName,proto3" json:"project_name,omitempty"`

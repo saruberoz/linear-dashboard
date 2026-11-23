@@ -309,7 +309,10 @@ because a reader who doesn't know about them will draw the wrong conclusion.
     work.
 2.  **No double counting.**
     *   A project with N segments gives 1/N of its effort to each segment.
-    *   A parent task whose sub-tasks are estimated counts as 0.
+    *   Effort comes from the issue, not its sub-tasks. Below an estimated
+        issue, every sub-task counts as 0. A sub-task's estimate counts only
+        when no task above it is estimated. *(Changed 2026-11-23; sub-tasks used
+        to win over their parent.)*
     *   Canceled tasks count as 0.
     *   Segment totals add up to the overall tagged total, within 0.1 pt of
         rounding.
@@ -448,7 +451,8 @@ because a reader who doesn't know about them will draw the wrong conclusion.
 *   **Then**: The unestimated tasks for that segment or project are listed,
     grouped by assignee, with a link to each task in Linear. Turning on "All
     projects" adds unestimated work in untagged projects. Canceled tasks are left out, and so are teams
-    with estimates turned off and parents whose sub-tasks are estimated.
+    with estimates turned off, sub-tasks of estimated issues, and issues whose
+    sub-tasks are estimated.
 
 ### CUJ 5: Fix tagging
 
@@ -554,7 +558,7 @@ work.
     These fields depend on the whole tree, not on the date range, so they are
     computed once per sync instead of on every request. Running this step even
     after a failed fetch keeps the stored totals consistent with the stored
-    tasks. A parent is never counted on top of sub-tasks that were stored in
+    tasks. A sub-task is never counted on top of a parent that was stored in
     the same run.
 4.  **Mark deletions.** Only after every fetch has succeeded, mark rows whose
     `last_seen_run` is older than this run as `deleted = true`.
@@ -588,8 +592,8 @@ is covered by table-driven tests built from the cases found in the real data.
 |---|---|---|
 | Segment of a project | project labels | the set of B2B, B2G, B2B NG, B2C and Internal PARKEE labels. A label matches if it equals a segment name after lower-casing and removing spaces, hyphens and underscores. `b2bng` and `b2bnongroup` both mean B2B NG; `internalparkee` means Internal PARKEE. |
 | Segment split | project effort, N segments | each segment gets effort ÷ N |
-| Effective points | task, its sub-tasks | 0 if canceled, a duplicate, or a parent with an estimated, non-canceled sub-task anywhere below it; otherwise the task's own estimate (0 if none) |
-| Missing estimate | task, team | no estimate, and not canceled, and the team has estimates turned on, and not a parent whose sub-tasks are estimated |
+| Effective points | task, its sub-tasks | 0 if canceled, a duplicate, or below an estimated, non-canceled task anywhere above it; otherwise the task's own estimate (0 if none) |
+| Missing estimate | task, team | no estimate, and not canceled, and the team has estimates turned on, and no estimated, non-canceled task above or below it |
 | In range | task, from, to (Asia/Jakarta, inclusive) | created in range, or completed in range, or started on or before the end and not completed or canceled before the start |
 | Status bucket | Linear state type | completed → Done; started → In progress; backlog, unstarted or triage → Not started; canceled or duplicate → Canceled |
 | Visible initiative | initiative name | the name starts with `[W]` or `[WS]`, ignoring case and spaces |
@@ -682,7 +686,7 @@ defined in protobuf with `google.api.http` mappings, as Kratos does.
 | `initiatives` | id, name, status, url, created_at, is_visible, last_seen_run, deleted |
 | `projects` | id, name, state, url, created_at, segments (string array, derived), last_seen_run, deleted |
 | `project_labels`, `initiative_projects`, `issue_labels` | link tables, replaced in full for each parent row that is upserted |
-| `issues` | id, identifier, title, url, team_id, project_id, parent_id, assignee_id, estimate, priority, state_name, state_type, created_at, started_at, completed_at, canceled_at, archived_at, plus derived columns effective_pts, has_estimated_descendant, is_missing_estimate, task_segment_labels; last_seen_run, deleted |
+| `issues` | id, identifier, title, url, team_id, project_id, parent_id, assignee_id, estimate, priority, state_name, state_type, created_at, started_at, completed_at, canceled_at, archived_at, plus derived columns effective_pts, has_estimated_ancestor, is_missing_estimate, task_segment_labels; last_seen_run, deleted |
 | `sync_runs` | id, started_at, finished_at, status, stats (JSONB), error; partial unique index on `status = 'running'` |
 
 Indexes:

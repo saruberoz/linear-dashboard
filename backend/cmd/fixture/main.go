@@ -84,7 +84,7 @@ func run() error {
 		}
 		usedUsers[t.AssigneeID] = true
 		usedTeams[t.TeamID] = true
-		t.HasEstimatedDescendant, t.EffectivePts, t.MissingEstimate, t.TaskSegments = false, 0, false, nil
+		t.HasEstimatedAncestor, t.EffectivePts, t.MissingEstimate, t.TaskSegments = false, 0, false, nil
 		f.Tasks = append(f.Tasks, t)
 	}
 	sort.Slice(f.Tasks, func(i, j int) bool { return f.Tasks[i].ID < f.Tasks[j].ID })

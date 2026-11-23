@@ -824,8 +824,8 @@ function MissingView({ d }: { d: T.MissingResponse }) {
         )}
       </div>
       <p className="-mt-2 text-xs text-muted-foreground">
-        Excluded: canceled tasks, teams with estimates turned off, and parents
-        whose sub-tasks are estimated.
+        Excluded: canceled tasks, teams with estimates turned off, sub-tasks of
+        estimated issues, and issues whose sub-tasks are estimated.
       </p>
       {d.groups.map((g) => (
         <ItemsCard

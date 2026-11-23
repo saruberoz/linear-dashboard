@@ -113,15 +113,17 @@ type Task struct {
 	LabelIDs        []string
 
 	// Derived over the full task tree at sync time (see Derive).
-	HasEstimatedDescendant bool
-	EffectivePts           float64
-	MissingEstimate        bool
-	TaskSegments           []string
+	HasEstimatedAncestor bool
+	EffectivePts         float64
+	MissingEstimate      bool
+	TaskSegments         []string
 }
 
 // Status returns the task's status bucket.
 func (t *Task) Status() string { return Bucket(t.StateType) }
 
 // Deferred reports whether the task's own estimate is ignored because an
-// estimated, non-canceled sub-task exists below it.
-func (t *Task) Deferred() bool { return t.HasEstimatedDescendant }
+// estimated, non-canceled task exists above it.
+func (t *Task) Deferred() bool {
+	return t.HasEstimatedAncestor && t.Estimate != nil && t.Status() != StatusCanceled
+}

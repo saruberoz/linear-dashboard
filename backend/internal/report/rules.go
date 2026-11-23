@@ -81,23 +81,50 @@ func Bucket(stateType string) string {
 
 // Derive computes the tree-dependent fields of every task. It must run over the
 // complete set of tasks fetched in one sync, never a date-filtered subset, so a
-// parent whose estimated sub-tasks fall outside a date range still counts as 0.
+// sub-task whose estimated parent falls outside a date range still counts as 0.
 //
-// A task is "deferred" when an estimated, non-canceled sub-task exists anywhere
-// below it; a deferred or canceled task counts 0 points. A task is "missing an
-// estimate" when it has none, is not canceled, its team uses estimates, and it
-// is not deferred.
+// Effort comes from the highest estimate in a task tree, so a parent and its
+// sub-tasks are never both counted. A task counts its own estimate unless an
+// estimated, non-canceled task exists anywhere above it; then it counts 0.
+// Canceled tasks count 0. A task is "missing an estimate" when it has none, is
+// not canceled, its team uses estimates, and no estimated, non-canceled task
+// sits above or below it.
 func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 	children := map[string][]int{}
+	index := map[string]int{}
 	for i := range tasks {
+		index[tasks[i].ID] = i
 		if p := tasks[i].ParentID; p != "" {
 			children[p] = append(children[p], i)
 		}
 	}
-	memo := make([]int8, len(tasks)) // 0 unknown, 1 false, 2 true, 3 visiting
-	var hasEstimated func(i int) bool
-	hasEstimated = func(i int) bool {
-		switch memo[i] {
+	estimated := func(t *Task) bool { return t.Estimate != nil && t.Status() != StatusCanceled }
+	above := make([]int8, len(tasks)) // 0 unknown, 1 false, 2 true, 3 visiting
+	var hasEstimatedAncestor func(i int) bool
+	hasEstimatedAncestor = func(i int) bool {
+		switch above[i] {
+		case 1:
+			return false
+		case 2:
+			return true
+		case 3: // cycle: treat as no ancestors
+			return false
+		}
+		above[i] = 3
+		r := false
+		if p, ok := index[tasks[i].ParentID]; ok {
+			r = estimated(&tasks[p]) || hasEstimatedAncestor(p)
+		}
+		above[i] = 1
+		if r {
+			above[i] = 2
+		}
+		return r
+	}
+	below := make([]int8, len(tasks))
+	var hasEstimatedDescendant func(i int) bool
+	hasEstimatedDescendant = func(i int) bool {
+		switch below[i] {
 		case 1:
 			return false
 		case 2:
@@ -105,37 +132,32 @@ func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 		case 3: // cycle: treat as no descendants
 			return false
 		}
-		memo[i] = 3
+		below[i] = 3
 		r := false
 		for _, c := range children[tasks[i].ID] {
-			ct := &tasks[c]
-			if ct.Status() == StatusCanceled {
-				continue
-			}
-			if ct.Estimate != nil || hasEstimated(c) {
+			if estimated(&tasks[c]) || hasEstimatedDescendant(c) {
 				r = true
 				break
 			}
 		}
+		below[i] = 1
 		if r {
-			memo[i] = 2
-		} else {
-			memo[i] = 1
+			below[i] = 2
 		}
 		return r
 	}
 	for i := range tasks {
 		t := &tasks[i]
-		t.HasEstimatedDescendant = hasEstimated(i)
+		t.HasEstimatedAncestor = hasEstimatedAncestor(i)
 		canceled := t.Status() == StatusCanceled
 		switch {
-		case canceled || t.HasEstimatedDescendant || t.Estimate == nil:
+		case canceled || t.HasEstimatedAncestor || t.Estimate == nil:
 			t.EffectivePts = 0
 		default:
 			t.EffectivePts = *t.Estimate
 		}
 		t.MissingEstimate = t.Estimate == nil && !canceled &&
-			teams[t.TeamID].EstimationType != "notUsed" && !t.HasEstimatedDescendant
+			teams[t.TeamID].EstimationType != "notUsed" && !t.HasEstimatedAncestor && !hasEstimatedDescendant(i)
 		names := make([]string, 0, len(t.LabelIDs))
 		for _, id := range t.LabelIDs {
 			names = append(names, labels[id].Name)

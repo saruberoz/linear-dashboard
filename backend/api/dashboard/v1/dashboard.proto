@@ -170,9 +170,9 @@ message TaskRow {
   repeated string labels = 9;
   bool has_estimate = 10;
   double estimate = 11;
-  double counted_pts = 12; // effective points of the task (0 if canceled or deferred)
+  double counted_pts = 12; // effective points of the task (0 if canceled or under an estimated parent)
   double share_pts = 13; // what this task contributes to the requested number
-  bool deferred = 14; // own estimate ignored because estimated sub-tasks exist
+  bool deferred = 14; // own estimate ignored because an issue above it is estimated
   bool missing = 15;
   string project_id = 16;
   string project_name = 17;

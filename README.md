@@ -88,7 +88,8 @@ insights, modeled on [Linear Insights](https://linear.app/docs/insights).
 Effort follows the same rules as the rest of the app:
 
 *   canceled tasks don't count;
-*   a parent with estimated sub-tasks counts as 0;
+*   effort comes from the issue, not its sub-tasks: below an estimated issue,
+    every sub-task counts as 0;
 *   a shared project's effort is split evenly across its segments;
 *   a task with several labels splits its effort evenly across them.
 

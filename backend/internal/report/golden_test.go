@@ -12,7 +12,9 @@ import (
 // testdata/fixture.json is an anonymized export (cmd/fixture) of the 62
 // segment-tagged projects synced on 2026-11-17, and the expected values below
 // are what the reviewed prototype's JavaScript rules (mockup/lib/model.js,
-// since removed) computed on that same fixture.
+// since removed) computed on that same fixture. On 2026-11-23 the effort rule
+// changed to count the highest estimate in a task tree instead of sub-tasks;
+// the new totals (786, was 1134) match an independent re-computation.
 func TestGoldenNovember2026(t *testing.T) {
 	raw, err := os.ReadFile("testdata/fixture.json")
 	if err != nil {
@@ -49,7 +51,7 @@ func TestGoldenNovember2026(t *testing.T) {
 		pts      float64
 		projects int32
 	}{
-		"B2B": {402.33, 19}, "B2G": {16.33, 5}, "B2BNG": {0, 0}, "B2C": {715.33, 27},
+		"B2B": {227.33, 19}, "B2G": {16.33, 5}, "B2BNG": {0, 0}, "B2C": {542.33, 27},
 	}
 	for _, s := range o.Segments {
 		w := want[s.Key]
@@ -57,10 +59,10 @@ func TestGoldenNovember2026(t *testing.T) {
 			t.Errorf("%s: %.2f pts, %d projects; want %.2f pts, %d projects", s.Key, s.Pts, s.Projects, w.pts, w.projects)
 		}
 	}
-	if math.Abs(o.TaggedTotal-1134) > 0.01 || math.Abs(o.Summary.Total-1134) > 0.01 {
-		t.Errorf("tagged total %.2f, summary total %.2f; want 1134 for both", o.TaggedTotal, o.Summary.Total)
+	if math.Abs(o.TaggedTotal-786) > 0.01 || math.Abs(o.Summary.Total-786) > 0.01 {
+		t.Errorf("tagged total %.2f, summary total %.2f; want 786 for both", o.TaggedTotal, o.Summary.Total)
 	}
-	if o.Summary.TasksMissing != 161 || o.Summary.TasksTotal != 585 {
-		t.Errorf("unestimated %d of %d; want 161 of 585", o.Summary.TasksMissing, o.Summary.TasksTotal)
+	if o.Summary.TasksMissing != 44 || o.Summary.TasksTotal != 585 {
+		t.Errorf("unestimated %d of %d; want 44 of 585", o.Summary.TasksMissing, o.Summary.TasksTotal)
 	}
 }

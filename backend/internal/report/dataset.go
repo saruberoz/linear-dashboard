@@ -84,8 +84,8 @@ func (d *Dataset) indexTasks() {
 // ForTeams narrows the dataset to the given teams: their tasks, and the projects
 // that belong to one of the teams or hold one of their tasks. Initiatives keep
 // their full project lists, so initiative housekeeping stays workspace-wide.
-// Task-derived fields keep their full-tree values: a parent whose sub-tasks sit
-// in another team still defers its estimate to them.
+// Task-derived fields keep their full-tree values: a sub-task whose estimated
+// parent sits in another team still counts 0.
 func (d *Dataset) ForTeams(teamIDs map[string]bool) *Dataset {
 	out := &Dataset{
 		SyncedAt:    d.SyncedAt,

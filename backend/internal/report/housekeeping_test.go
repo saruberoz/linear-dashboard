@@ -124,8 +124,8 @@ func TestUnassignedTasksWithEffort(t *testing.T) {
 		{ID: "big", Identifier: "X-2", TeamID: "est", StateType: "started", Estimate: ptr(5.0), CreatedAt: nov, StartedAt: ptr(nov)},
 		{ID: "assigned", TeamID: "est", ProjectID: "p", AssigneeID: "alice", StateType: "backlog", Estimate: ptr(3.0), CreatedAt: nov},
 		{ID: "noestimate", TeamID: "est", ProjectID: "p", StateType: "backlog", CreatedAt: nov},
-		{ID: "parent", TeamID: "est", ProjectID: "p", StateType: "backlog", Estimate: ptr(8.0), CreatedAt: nov},
-		{ID: "child", Identifier: "X-3", TeamID: "est", ProjectID: "p", ParentID: "parent", AssigneeID: "alice", StateType: "backlog", Estimate: ptr(1.0), CreatedAt: nov},
+		{ID: "parent", TeamID: "est", ProjectID: "p", AssigneeID: "alice", StateType: "backlog", Estimate: ptr(8.0), CreatedAt: nov},
+		{ID: "child", Identifier: "X-3", TeamID: "est", ProjectID: "p", ParentID: "parent", StateType: "backlog", Estimate: ptr(1.0), CreatedAt: nov},
 		{ID: "canceled", TeamID: "est", StateType: "canceled", Estimate: ptr(4.0), CreatedAt: nov, CanceledAt: ptr(nov)},
 		{ID: "old", TeamID: "est", StateType: "completed", Estimate: ptr(4.0), CreatedAt: sep, CompletedAt: ptr(sep)},
 	})

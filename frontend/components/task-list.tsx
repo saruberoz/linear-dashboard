@@ -40,8 +40,8 @@ function Counted({ t, share }: { t: TaskRow; share: boolean }) {
   if (t.deferred)
     return (
       <Hint
-        text="Sub-tasks are estimated, so this task's own estimate isn't counted"
-        label="in sub-tasks"
+        text="An issue above this sub-task is estimated, so this estimate isn't counted"
+        label="in parent"
       />
     )
   if (!t.hasEstimate) return <span className="text-muted-foreground/60">0</span>
