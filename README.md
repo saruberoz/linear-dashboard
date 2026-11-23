@@ -88,7 +88,11 @@ insights, modeled on [Linear Insights](https://linear.app/docs/insights).
 Effort follows the same rules as the rest of the app:
 
 *   canceled tasks don't count;
-*   tasks with "meeting" in the title are left out entirely;
+*   tasks whose title has one of the words in `IgnoredTaskKeywords`
+    (`backend/internal/report/rules.go`) are left out entirely: Meeting, Meet,
+    DISCUSS, DISCUSSION, RECAP, Check, Asses Issue, Assess, Assessment,
+    OS_Data. Matching ignores case and needs a whole word, so "Checkout"
+    still counts;
 *   effort comes from the issue, not its sub-tasks: below an estimated issue,
     every sub-task counts as 0;
 *   a shared project's effort is split evenly across its segments;
@@ -140,5 +144,6 @@ The housekeeping pages in the left menu list what to fix in Linear:
     instead; task labels never count.
 *   **Untagged projects:** projects with no segment label.
 *   **Projects without initiative:** projects that are in no `[W]`/`[WS]`
-    initiative. Draft initiatives ("draft" in the name) don't count.
+    initiative. Draft initiatives (a word from `IgnoredInitiativeKeywords` in the name)
+    don't count.
 *   **Initiatives without projects:** initiatives with no linked project.

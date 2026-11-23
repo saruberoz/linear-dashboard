@@ -59,22 +59,46 @@ func SegmentLabel(key string) string {
 	return key
 }
 
-var (
-	visibleInitiative = regexp.MustCompile(`(?i)^\s*\[\s*(w|ws)\s*\]`)
-	draftInitiative   = regexp.MustCompile(`(?i)\bdraft\b`)
-	meetingTask       = regexp.MustCompile(`(?i)meeting`)
-)
+// IgnoredInitiativeKeywords mark initiatives that are not approved yet. An
+// initiative whose name has one of these words is hidden like sprints and buckets.
+var IgnoredInitiativeKeywords = []string{"DRAFT"}
 
-// IsVisibleInitiative reports whether an initiative is shown: its name starts
-// with [W] or [WS], ignoring case and spaces, and does not contain the word
-// "draft" (not approved yet). Sprints, buckets and drafts are hidden.
-func IsVisibleInitiative(name string) bool {
-	return visibleInitiative.MatchString(name) && !draftInitiative.MatchString(name)
+// IgnoredTaskKeywords mark tasks that are not delivery work. A task whose title
+// has one of these words is left out of the dashboard entirely.
+var IgnoredTaskKeywords = []string{
+	"Meeting", "Meetings", "Meet",
+	"DISCUSS", "DISCUSSION",
+	"RECAP",
+	"Check",
+	"Asses Issue", "Assess", "Assessment",
+	"OS_Data",
 }
 
-// IsMeeting reports whether a task is a meeting, which the dashboard leaves out
-// entirely: its title contains "meeting" in any case.
-func IsMeeting(title string) bool { return meetingTask.MatchString(title) }
+var (
+	visibleInitiative = regexp.MustCompile(`(?i)^\s*\[\s*(w|ws)\s*\]`)
+	ignoredInitiative = wholeWords(IgnoredInitiativeKeywords)
+	ignoredTask       = wholeWords(IgnoredTaskKeywords)
+)
+
+// wholeWords matches any of the words, ignoring case, when no letter or digit
+// touches either end, so "Check" matches "[Check] QRIS" but not "Checkout".
+func wholeWords(words []string) *regexp.Regexp {
+	quoted := make([]string, len(words))
+	for i, w := range words {
+		quoted[i] = regexp.QuoteMeta(w)
+	}
+	return regexp.MustCompile(`(?i)(^|[^\pL\pN])(` + strings.Join(quoted, "|") + `)($|[^\pL\pN])`)
+}
+
+// IsVisibleInitiative reports whether an initiative is shown: its name starts
+// with [W] or [WS], ignoring case and spaces, and has none of
+// IgnoredInitiativeKeywords. Sprints, buckets and drafts are hidden.
+func IsVisibleInitiative(name string) bool {
+	return visibleInitiative.MatchString(name) && !ignoredInitiative.MatchString(name)
+}
+
+// IsIgnoredTask reports whether a task's title has one of IgnoredTaskKeywords.
+func IsIgnoredTask(title string) bool { return ignoredTask.MatchString(title) }
 
 // Bucket maps a Linear state type to a status bucket. "duplicate" counts as canceled.
 func Bucket(stateType string) string {
@@ -99,8 +123,8 @@ func Bucket(stateType string) string {
 // estimated, non-canceled task exists anywhere above it; then it counts 0.
 // Canceled tasks count 0. A task is "missing an estimate" when it has none, is
 // not canceled, its team uses estimates, and no estimated, non-canceled task
-// sits above or below it. Meeting tasks count 0 and never hide the estimates
-// of tasks above or below them.
+// sits above or below it. Ignored tasks (IsIgnoredTask) count 0 and never hide
+// the estimates of tasks above or below them.
 func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 	children := map[string][]int{}
 	index := map[string]int{}
@@ -110,7 +134,9 @@ func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 			children[p] = append(children[p], i)
 		}
 	}
-	estimated := func(t *Task) bool { return t.Estimate != nil && t.Status() != StatusCanceled && !IsMeeting(t.Title) }
+	estimated := func(t *Task) bool {
+		return t.Estimate != nil && t.Status() != StatusCanceled && !IsIgnoredTask(t.Title)
+	}
 	above := make([]int8, len(tasks)) // 0 unknown, 1 false, 2 true, 3 visiting
 	var hasEstimatedAncestor func(i int) bool
 	hasEstimatedAncestor = func(i int) bool {
@@ -162,14 +188,14 @@ func Derive(tasks []Task, teams map[string]Team, labels map[string]Label) {
 		t := &tasks[i]
 		t.HasEstimatedAncestor = hasEstimatedAncestor(i)
 		canceled := t.Status() == StatusCanceled
-		meeting := IsMeeting(t.Title)
+		ignored := IsIgnoredTask(t.Title)
 		switch {
-		case canceled || meeting || t.HasEstimatedAncestor || t.Estimate == nil:
+		case canceled || ignored || t.HasEstimatedAncestor || t.Estimate == nil:
 			t.EffectivePts = 0
 		default:
 			t.EffectivePts = *t.Estimate
 		}
-		t.MissingEstimate = t.Estimate == nil && !canceled && !meeting &&
+		t.MissingEstimate = t.Estimate == nil && !canceled && !ignored &&
 			teams[t.TeamID].EstimationType != "notUsed" && !t.HasEstimatedAncestor && !hasEstimatedDescendant(i)
 		names := make([]string, 0, len(t.LabelIDs))
 		for _, id := range t.LabelIDs {

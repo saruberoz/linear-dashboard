@@ -21,7 +21,7 @@ type Dataset struct {
 	taskByID       map[string]*Task
 }
 
-// NewDataset indexes the data and fills derived project fields. Meeting tasks
+// NewDataset indexes the data and fills derived project fields. Ignored tasks
 // are left out. Task-derived fields must already be set (by Derive during sync,
 // or loaded from the store).
 func NewDataset(syncedAt time.Time, teams []Team, users []User, labels []Label,
@@ -35,7 +35,7 @@ func NewDataset(syncedAt time.Time, teams []Team, users []User, labels []Label,
 		Projects:    map[string]*Project{},
 	}
 	for _, t := range tasks {
-		if !IsMeeting(t.Title) {
+		if !IsIgnoredTask(t.Title) {
 			d.Tasks = append(d.Tasks, t)
 		}
 	}

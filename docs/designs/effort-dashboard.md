@@ -314,8 +314,12 @@ because a reader who doesn't know about them will draw the wrong conclusion.
         when no task above it is estimated. *(Changed 2026-11-23; sub-tasks used
         to win over their parent.)*
     *   Canceled tasks count as 0.
-    *   Tasks with "meeting" in the title, in any case, are left out of every
-        view. *(Added 2026-11-23.)*
+    *   Tasks that are not delivery work are left out of every view. Their
+        title has one of the words in `IgnoredTaskKeywords`
+        (`backend/internal/report/rules.go`): Meeting, Meetings, Meet, DISCUSS,
+        DISCUSSION, RECAP, Check, Asses Issue, Assess, Assessment, OS_Data.
+        Matching ignores case and needs a whole word, so "Checkout" and
+        "Checkin" still count. *(Added 2026-11-23.)*
     *   Segment totals add up to the overall tagged total, within 0.1 pt of
         rounding.
 3.  **Drill-down on one page.** You can choose "All tagged work", a segment, an
@@ -598,7 +602,7 @@ is covered by table-driven tests built from the cases found in the real data.
 | Missing estimate | task, team | no estimate, and not canceled, and the team has estimates turned on, and no estimated, non-canceled task above or below it |
 | In range | task, from, to (Asia/Jakarta, inclusive) | created in range, or completed in range, or started on or before the end and not completed or canceled before the start |
 | Status bucket | Linear state type | completed → Done; started → In progress; backlog, unstarted or triage → Not started; canceled or duplicate → Canceled |
-| Visible initiative | initiative name | the name starts with `[W]` or `[WS]`, ignoring case and spaces, and does not contain the word "draft" (not approved yet; added 2026-11-23) |
+| Visible initiative | initiative name | the name starts with `[W]` or `[WS]`, ignoring case and spaces, and has none of the words in `IgnoredInitiativeKeywords`, which is "DRAFT" (not approved yet; added 2026-11-23) |
 | Initiative total | its projects | on an initiative page, the full total of each of its projects. On a segment page, each project's segment share split evenly across the shown initiatives it is listed under, so the subtotals add up to the segment total (author's decision, 2026-11-20) |
 | Label share | task labels | a task's effort is split evenly across its labels; tasks with no label are counted separately as "No label" |
 | Task-label warning | task labels | the task carries a segment-named task label. It is reported, never counted. |

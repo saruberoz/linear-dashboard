@@ -196,7 +196,7 @@ func TestForTeamsKeepsTheTeamsTasksAndProjects(t *testing.T) {
 	}
 }
 
-func TestNewDatasetLeavesOutMeetings(t *testing.T) {
+func TestNewDatasetLeavesOutIgnoredTasks(t *testing.T) {
 	nov := at("2026-11-05 10:00")
 	d := build(nil, nil, []Task{
 		{ID: "work", Title: "Build login", TeamID: "est", StateType: "backlog", Estimate: ptr(2.0), CreatedAt: nov},
@@ -207,6 +207,6 @@ func TestNewDatasetLeavesOutMeetings(t *testing.T) {
 		t.Errorf("tasks = %v, want only work", d.Tasks)
 	}
 	if d.taskByID["standup"] != nil {
-		t.Errorf("meeting task is still indexed")
+		t.Errorf("ignored task is still indexed")
 	}
 }

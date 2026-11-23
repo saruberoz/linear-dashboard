@@ -94,6 +94,39 @@ func TestIsVisibleInitiative(t *testing.T) {
 	}
 }
 
+func TestIsIgnoredTask(t *testing.T) {
+	tests := []struct {
+		in   string
+		want bool
+	}{
+		{"[MEETING] Daily standup", true},
+		{"sync meetings", true},
+		{"Meet 19 Oct, bahas parkee protection", true},
+		{"[DISCUSS] Update Seeder Staging DB", true},
+		{"[DISCUSSION] discussion with engineer", true},
+		{"3 Nov BSH Discussion", true},
+		{"Weekly RECAP", true},
+		{"Check Responsive", true},
+		{"[Check] Calculate Visa Promo", true},
+		{"re-check payment", true},
+		{"Asses Issue settlement", true},
+		{"[ASSESS] PRD & Engineering Assessment", true},
+		{"Pre-Assessment", true},
+		{"OS_Data cleanup", true},
+		{"[OS_DATA_] import", true},
+		{"Fix checkout flow", false},
+		{"Create Mock Endpoint Of TITO Checkin", false},
+		{"Show Checkbox Dropdown", false},
+		{"QA checklist", false},
+		{"Build login", false},
+	}
+	for _, tt := range tests {
+		if got := IsIgnoredTask(tt.in); got != tt.want {
+			t.Errorf("IsIgnoredTask(%q) = %v, want %v", tt.in, got, tt.want)
+		}
+	}
+}
+
 func TestBucket(t *testing.T) {
 	tests := []struct{ in, want string }{
 		{"completed", StatusDone}, {"started", StatusInProgress}, {"backlog", StatusNotStarted},
