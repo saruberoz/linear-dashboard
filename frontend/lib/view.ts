@@ -1,3 +1,4 @@
+import { DEFAULT_TEAMS } from "@/lib/constants"
 import type * as T from "@/lib/types"
 
 /** What the main area shows, with the data the server fetched for it. */
@@ -19,6 +20,12 @@ export type View =
   | { kind: "error"; error: T.ApiError }
 
 export type Range = { from: string; to: string }
+
+/** The team keys a `teams` URL value selects; an empty list means every team. */
+export function teamsOf(param: string | undefined): string[] {
+  if (!param) return DEFAULT_TEAMS
+  return param === "all" ? [] : param.split(",")
+}
 
 const jakartaParts = (now: Date) =>
   new Intl.DateTimeFormat("en-CA", {

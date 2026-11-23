@@ -1947,66 +1947,6 @@ func (*GetInsightOptionsRequest) Descriptor() ([]byte, []int) {
 	return file_dashboard_v1_insights_proto_rawDescGZIP(), []int{30}
 }
 
-type TeamOption struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Key           string                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TeamOption) Reset() {
-	*x = TeamOption{}
-	mi := &file_dashboard_v1_insights_proto_msgTypes[31]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TeamOption) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TeamOption) ProtoMessage() {}
-
-func (x *TeamOption) ProtoReflect() protoreflect.Message {
-	mi := &file_dashboard_v1_insights_proto_msgTypes[31]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TeamOption.ProtoReflect.Descriptor instead.
-func (*TeamOption) Descriptor() ([]byte, []int) {
-	return file_dashboard_v1_insights_proto_rawDescGZIP(), []int{31}
-}
-
-func (x *TeamOption) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *TeamOption) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *TeamOption) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
 type LabelOption struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -2017,7 +1957,7 @@ type LabelOption struct {
 
 func (x *LabelOption) Reset() {
 	*x = LabelOption{}
-	mi := &file_dashboard_v1_insights_proto_msgTypes[32]
+	mi := &file_dashboard_v1_insights_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2029,7 +1969,7 @@ func (x *LabelOption) String() string {
 func (*LabelOption) ProtoMessage() {}
 
 func (x *LabelOption) ProtoReflect() protoreflect.Message {
-	mi := &file_dashboard_v1_insights_proto_msgTypes[32]
+	mi := &file_dashboard_v1_insights_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2042,7 +1982,7 @@ func (x *LabelOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LabelOption.ProtoReflect.Descriptor instead.
 func (*LabelOption) Descriptor() ([]byte, []int) {
-	return file_dashboard_v1_insights_proto_rawDescGZIP(), []int{32}
+	return file_dashboard_v1_insights_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *LabelOption) GetName() string {
@@ -2069,7 +2009,7 @@ type GetInsightOptionsResponse struct {
 
 func (x *GetInsightOptionsResponse) Reset() {
 	*x = GetInsightOptionsResponse{}
-	mi := &file_dashboard_v1_insights_proto_msgTypes[33]
+	mi := &file_dashboard_v1_insights_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2081,7 +2021,7 @@ func (x *GetInsightOptionsResponse) String() string {
 func (*GetInsightOptionsResponse) ProtoMessage() {}
 
 func (x *GetInsightOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dashboard_v1_insights_proto_msgTypes[33]
+	mi := &file_dashboard_v1_insights_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2094,7 +2034,7 @@ func (x *GetInsightOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInsightOptionsResponse.ProtoReflect.Descriptor instead.
 func (*GetInsightOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_dashboard_v1_insights_proto_rawDescGZIP(), []int{33}
+	return file_dashboard_v1_insights_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetInsightOptionsResponse) GetTeams() []*TeamOption {
@@ -2259,12 +2199,7 @@ const file_dashboard_v1_insights_proto_rawDesc = "" +
 	"\x18ListInsightTasksResponse\x12+\n" +
 	"\x05tasks\x18\x01 \x03(\v2\x15.dashboard.v1.TaskRowR\x05tasks\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x01R\x05total\"\x1a\n" +
-	"\x18GetInsightOptionsRequest\"B\n" +
-	"\n" +
-	"TeamOption\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"7\n" +
+	"\x18GetInsightOptionsRequest\"7\n" +
 	"\vLabelOption\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05tasks\x18\x02 \x01(\x05R\x05tasks\"~\n" +
@@ -2298,7 +2233,7 @@ func file_dashboard_v1_insights_proto_rawDescGZIP() []byte {
 	return file_dashboard_v1_insights_proto_rawDescData
 }
 
-var file_dashboard_v1_insights_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_dashboard_v1_insights_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_dashboard_v1_insights_proto_goTypes = []any{
 	(*InsightFilters)(nil),            // 0: dashboard.v1.InsightFilters
 	(*InsightSpec)(nil),               // 1: dashboard.v1.InsightSpec
@@ -2331,10 +2266,10 @@ var file_dashboard_v1_insights_proto_goTypes = []any{
 	(*ListInsightTasksRequest)(nil),   // 28: dashboard.v1.ListInsightTasksRequest
 	(*ListInsightTasksResponse)(nil),  // 29: dashboard.v1.ListInsightTasksResponse
 	(*GetInsightOptionsRequest)(nil),  // 30: dashboard.v1.GetInsightOptionsRequest
-	(*TeamOption)(nil),                // 31: dashboard.v1.TeamOption
-	(*LabelOption)(nil),               // 32: dashboard.v1.LabelOption
-	(*GetInsightOptionsResponse)(nil), // 33: dashboard.v1.GetInsightOptionsResponse
-	(*TaskRow)(nil),                   // 34: dashboard.v1.TaskRow
+	(*LabelOption)(nil),               // 31: dashboard.v1.LabelOption
+	(*GetInsightOptionsResponse)(nil), // 32: dashboard.v1.GetInsightOptionsResponse
+	(*TaskRow)(nil),                   // 33: dashboard.v1.TaskRow
+	(*TeamOption)(nil),                // 34: dashboard.v1.TeamOption
 }
 var file_dashboard_v1_insights_proto_depIdxs = []int32{
 	0,  // 0: dashboard.v1.InsightSpec.filters:type_name -> dashboard.v1.InsightFilters
@@ -2362,9 +2297,9 @@ var file_dashboard_v1_insights_proto_depIdxs = []int32{
 	25, // 22: dashboard.v1.RunInsightResponse.result:type_name -> dashboard.v1.InsightResult
 	1,  // 23: dashboard.v1.ListInsightTasksRequest.spec:type_name -> dashboard.v1.InsightSpec
 	0,  // 24: dashboard.v1.ListInsightTasksRequest.dashboard_filters:type_name -> dashboard.v1.InsightFilters
-	34, // 25: dashboard.v1.ListInsightTasksResponse.tasks:type_name -> dashboard.v1.TaskRow
-	31, // 26: dashboard.v1.GetInsightOptionsResponse.teams:type_name -> dashboard.v1.TeamOption
-	32, // 27: dashboard.v1.GetInsightOptionsResponse.labels:type_name -> dashboard.v1.LabelOption
+	33, // 25: dashboard.v1.ListInsightTasksResponse.tasks:type_name -> dashboard.v1.TaskRow
+	34, // 26: dashboard.v1.GetInsightOptionsResponse.teams:type_name -> dashboard.v1.TeamOption
+	31, // 27: dashboard.v1.GetInsightOptionsResponse.labels:type_name -> dashboard.v1.LabelOption
 	5,  // 28: dashboard.v1.InsightService.ListDashboards:input_type -> dashboard.v1.ListDashboardsRequest
 	7,  // 29: dashboard.v1.InsightService.CreateDashboard:input_type -> dashboard.v1.CreateDashboardRequest
 	9,  // 30: dashboard.v1.InsightService.GetDashboard:input_type -> dashboard.v1.GetDashboardRequest
@@ -2386,7 +2321,7 @@ var file_dashboard_v1_insights_proto_depIdxs = []int32{
 	20, // 46: dashboard.v1.InsightService.DeleteInsight:output_type -> dashboard.v1.DeleteInsightResponse
 	27, // 47: dashboard.v1.InsightService.RunInsight:output_type -> dashboard.v1.RunInsightResponse
 	29, // 48: dashboard.v1.InsightService.ListInsightTasks:output_type -> dashboard.v1.ListInsightTasksResponse
-	33, // 49: dashboard.v1.InsightService.GetInsightOptions:output_type -> dashboard.v1.GetInsightOptionsResponse
+	32, // 49: dashboard.v1.InsightService.GetInsightOptions:output_type -> dashboard.v1.GetInsightOptionsResponse
 	39, // [39:50] is the sub-list for method output_type
 	28, // [28:39] is the sub-list for method input_type
 	28, // [28:28] is the sub-list for extension type_name
@@ -2406,7 +2341,7 @@ func file_dashboard_v1_insights_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dashboard_v1_insights_proto_rawDesc), len(file_dashboard_v1_insights_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   34,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

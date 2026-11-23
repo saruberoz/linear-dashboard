@@ -150,3 +150,27 @@ export const PROJECT_STATES = [
 export const DEFAULT_PROJECT_STATES = PROJECT_STATES.filter(
   (s) => s !== "canceled"
 )
+
+/** Linear team keys the dashboard counts when the URL names no teams. */
+export const DEFAULT_TEAMS = [
+  "TEC",
+  "QA",
+  "QAC",
+  "QAAC",
+  "PM",
+  "POPS",
+  "PAY",
+  "PAR",
+  "NETIN",
+  "ML",
+  "IOT",
+  "IOS",
+  "FE",
+  "OS",
+  "DVOS",
+  "DES",
+  "DATA",
+  "CUS",
+  "BE",
+  "ADR",
+]

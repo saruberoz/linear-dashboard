@@ -133,6 +133,7 @@ export interface MenuResponse {
   missingTimelineCount: number
   emptyProjectCount: number
   sync: SyncInfo
+  teams?: TeamOption[]
 }
 
 export interface SegmentShare {

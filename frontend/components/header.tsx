@@ -3,7 +3,12 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CalendarIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react"
+import {
+  CalendarIcon,
+  RefreshCwIcon,
+  TriangleAlertIcon,
+  UsersIcon,
+} from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,6 +19,14 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Popover,
   PopoverContent,
@@ -29,7 +42,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { BackendError, clientFetch } from "@/lib/api"
-import type { SyncInfo } from "@/lib/types"
+import type { SyncInfo, TeamOption } from "@/lib/types"
+import { DEFAULT_TEAMS } from "@/lib/constants"
 import { currentMonth, jakartaWeek, type Range } from "@/lib/view"
 import { useDash } from "@/hooks/use-dash"
 import { cn } from "@/lib/utils"
@@ -83,10 +97,11 @@ export function DateRange({ range }: { range: Range }) {
     ([, , r]) => r.from === range.from && r.to === range.to
   )?.[0]
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       <ToggleGroup
         size="sm"
         variant="outline"
+        className="flex-wrap justify-end"
         value={active ? [active] : []}
         onValueChange={(v) => {
           const p = list.find(([k]) => k === v[0])
@@ -121,6 +136,71 @@ export function DateRange({ range }: { range: Range }) {
         </PopoverContent>
       </Popover>
     </div>
+  )
+}
+
+const sameKeys = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((k) => b.includes(k))
+
+/** Picks the Linear teams every number on the page counts. */
+export function TeamFilter({ teams }: { teams: TeamOption[] }) {
+  const { teams: selected, set, pending } = useDash()
+  const all = selected.length === 0
+  const ticked = all ? teams.map((t) => t.key) : selected
+  const save = (keys: string[]) =>
+    set({
+      teams:
+        keys.length === teams.length
+          ? "all"
+          : sameKeys(keys, DEFAULT_TEAMS)
+            ? ""
+            : keys.join(","),
+    })
+  const label = all
+    ? "All teams"
+    : sameKeys(selected, DEFAULT_TEAMS)
+      ? `Default teams (${teams.filter((t) => selected.includes(t.key)).length})`
+      : selected.length === 1
+        ? (teams.find((t) => t.key === selected[0])?.name ?? selected[0])
+        : `${selected.length} teams`
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+        {pending ? (
+          <Spinner data-icon="inline-start" />
+        ) : (
+          <UsersIcon data-icon="inline-start" />
+        )}
+        {label}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuItem onClick={() => save(DEFAULT_TEAMS)}>
+          Default teams
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => save(teams.map((t) => t.key))}>
+          All teams
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {teams.map((t) => {
+          const on = ticked.includes(t.key)
+          return (
+            <DropdownMenuCheckboxItem
+              key={t.id}
+              checked={on}
+              disabled={on && ticked.length === 1}
+              onCheckedChange={(c) =>
+                save(c ? [...ticked, t.key] : ticked.filter((k) => k !== t.key))
+              }
+            >
+              <span className="truncate">{t.name}</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {t.key}
+              </span>
+            </DropdownMenuCheckboxItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

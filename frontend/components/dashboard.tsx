@@ -48,7 +48,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ContributorsPivot } from "@/components/contributors-pivot"
-import { DateRange, Header } from "@/components/header"
+import { DateRange, Header, TeamFilter } from "@/components/header"
 import { SegmentDot } from "@/components/linear-icons"
 import {
   Kpi,
@@ -1305,7 +1305,10 @@ export function Dashboard({
     <>
       <Header crumbs={crumbs} sync={menu?.sync ?? null} />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6">
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          {view.kind !== "dashboard" && view.kind !== "emptyinit" && (
+            <TeamFilter teams={menu?.teams ?? []} />
+          )}
           <DateRange range={range} />
         </div>
         {body}

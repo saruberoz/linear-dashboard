@@ -32,7 +32,7 @@ const (
   pageInfo { hasNextPage endCursor } nodes { id name status url createdAt targetDate } } }`
 	projectsQuery = `query($after: String) { projects(first: 50, after: $after, includeArchived: true) {
   pageInfo { hasNextPage endCursor }
-  nodes { id name state url createdAt startDate targetDate labels(first: 20) { nodes { id } } initiatives(first: 20) { nodes { id } } } } }`
+  nodes { id name state url createdAt startDate targetDate labels(first: 20) { nodes { id } } initiatives(first: 20) { nodes { id } } teams(first: 20) { nodes { id } } } } }`
 	issuesQuery = `query($after: String) { issues(first: 100, after: $after, includeArchived: true) {
   pageInfo { hasNextPage endCursor }
   nodes { id identifier title url estimate priority createdAt startedAt completedAt canceledAt archivedAt startedTriageAt triagedAt trashed
@@ -131,11 +131,12 @@ func (c *Client) FetchWorkspace(ctx context.Context, progress func(int)) (*Works
 				TargetDate           *string   `json:"targetDate"`
 				Labels               struct{ Nodes []idRef }
 				Initiatives          struct{ Nodes []idRef }
+				Teams                struct{ Nodes []idRef }
 			}) {
 				for _, n := range ns {
 					ws.Projects = append(ws.Projects, report.Project{ID: n.ID, Name: n.Name, State: n.State, URL: n.URL,
 						CreatedAt: n.CreatedAt, LabelIDs: ids(n.Labels.Nodes), InitiativeIDs: ids(n.Initiatives.Nodes),
-						StartDate: deref(n.StartDate), TargetDate: deref(n.TargetDate)})
+						TeamIDs: ids(n.Teams.Nodes), StartDate: deref(n.StartDate), TargetDate: deref(n.TargetDate)})
 				}
 			})
 		}},

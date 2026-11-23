@@ -61,7 +61,8 @@ export function ContributorsPivot({
   scope: string
   range: { from: string; to: string }
 }) {
-  const { dim: urlDim, set } = useDash()
+  const { dim: urlDim, set, teams } = useDash()
+  const teamKey = teams.join(",")
   const dims = DIMENSIONS.filter((d) => tables.some((t) => t.dim === d.key))
   const dim = tables.some((t) => t.dim === urlDim) ? urlDim : "priority"
   const table = tables.find((t) => t.dim === dim)
@@ -82,6 +83,7 @@ export function ContributorsPivot({
       scope,
       from: range.from,
       to: range.to,
+      teams: teamKey ? teamKey.split(",") : [],
       dim: drill.dim,
       column: drill.column,
       assignee_id: drill.assigneeId,
@@ -91,7 +93,7 @@ export function ContributorsPivot({
     return () => {
       live = false
     }
-  }, [drill, scope, range.from, range.to])
+  }, [drill, scope, range.from, range.to, teamKey])
 
   if (!table) return null
   const people = table.rows.filter((r) => r.assigneeId !== "_unassigned").length

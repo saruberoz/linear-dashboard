@@ -4,6 +4,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	kerrors "github.com/go-kratos/kratos/v3/errors"
@@ -45,8 +46,10 @@ var (
 )
 
 // prepare returns the current dataset and the parsed range. Empty dates default
-// to the current month in the dashboard's time zone.
-func (h *Dashboard) prepare(from, to string) (*report.Dataset, report.Range, error) {
+// to the current month in the dashboard's time zone. Non-empty teams narrows the
+// dataset to those team keys; unknown keys are skipped, so a link naming a team
+// that was since removed still opens.
+func (h *Dashboard) prepare(from, to string, teams []string) (*report.Dataset, report.Range, error) {
 	ds := h.runner.Dataset()
 	if ds == nil {
 		return nil, report.Range{}, kerrors.ServiceUnavailable(ReasonNoData, "no data yet: the first Linear sync has not finished")
@@ -65,7 +68,20 @@ func (h *Dashboard) prepare(from, to string) (*report.Dataset, report.Range, err
 	if err != nil {
 		return nil, report.Range{}, kerrors.BadRequest(ReasonInvalidRange, err.Error())
 	}
-	return ds, r, nil
+	if len(teams) == 0 {
+		return ds, r, nil
+	}
+	byKey := map[string]string{}
+	for _, t := range ds.Teams {
+		byKey[t.Key] = t.ID
+	}
+	ids := map[string]bool{}
+	for _, k := range teams {
+		if id, ok := byKey[k]; ok {
+			ids[id] = true
+		}
+	}
+	return ds.ForTeams(ids), r, nil
 }
 
 // mapErr converts report errors to API errors.
@@ -85,7 +101,7 @@ func mapErr(err error) error {
 }
 
 func (h *Dashboard) GetMenu(ctx context.Context, req *pb.GetMenuRequest) (*pb.GetMenuResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		if kerrors.Reason(err) == ReasonNoData {
 			// The menu still answers before the first sync, so the page can show sync progress.
@@ -95,11 +111,15 @@ func (h *Dashboard) GetMenu(ctx context.Context, req *pb.GetMenuRequest) (*pb.Ge
 	}
 	res := ds.Menu(r)
 	res.Sync = h.syncInfo(ctx)
+	for _, t := range ds.Teams {
+		res.Teams = append(res.Teams, &pb.TeamOption{Id: t.ID, Key: t.Key, Name: t.Name})
+	}
+	sort.Slice(res.Teams, func(i, j int) bool { return res.Teams[i].Name < res.Teams[j].Name })
 	return res, nil
 }
 
 func (h *Dashboard) GetOverview(_ context.Context, req *pb.GetOverviewRequest) (*pb.GetOverviewResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +127,7 @@ func (h *Dashboard) GetOverview(_ context.Context, req *pb.GetOverviewRequest) (
 }
 
 func (h *Dashboard) GetSegment(_ context.Context, req *pb.GetSegmentRequest) (*pb.GetSegmentResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +136,7 @@ func (h *Dashboard) GetSegment(_ context.Context, req *pb.GetSegmentRequest) (*p
 }
 
 func (h *Dashboard) GetInitiative(_ context.Context, req *pb.GetInitiativeRequest) (*pb.GetInitiativeResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +145,7 @@ func (h *Dashboard) GetInitiative(_ context.Context, req *pb.GetInitiativeReques
 }
 
 func (h *Dashboard) GetProject(_ context.Context, req *pb.GetProjectRequest) (*pb.GetProjectResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +154,7 @@ func (h *Dashboard) GetProject(_ context.Context, req *pb.GetProjectRequest) (*p
 }
 
 func (h *Dashboard) ListTasks(_ context.Context, req *pb.ListTasksRequest) (*pb.ListTasksResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +163,7 @@ func (h *Dashboard) ListTasks(_ context.Context, req *pb.ListTasksRequest) (*pb.
 }
 
 func (h *Dashboard) ListMissingEstimates(_ context.Context, req *pb.ListMissingEstimatesRequest) (*pb.ListMissingEstimatesResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +172,7 @@ func (h *Dashboard) ListMissingEstimates(_ context.Context, req *pb.ListMissingE
 }
 
 func (h *Dashboard) ListSegmentLabelWarnings(_ context.Context, req *pb.ListSegmentLabelWarningsRequest) (*pb.ListSegmentLabelWarningsResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +180,7 @@ func (h *Dashboard) ListSegmentLabelWarnings(_ context.Context, req *pb.ListSegm
 }
 
 func (h *Dashboard) ListUntaggedProjects(_ context.Context, req *pb.ListUntaggedProjectsRequest) (*pb.ListUntaggedProjectsResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +188,7 @@ func (h *Dashboard) ListUntaggedProjects(_ context.Context, req *pb.ListUntagged
 }
 
 func (h *Dashboard) ListProjectsWithoutInitiative(_ context.Context, req *pb.ListProjectsWithoutInitiativeRequest) (*pb.ListProjectsWithoutInitiativeResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +196,7 @@ func (h *Dashboard) ListProjectsWithoutInitiative(_ context.Context, req *pb.Lis
 }
 
 func (h *Dashboard) ListInitiativesWithoutProjects(_ context.Context, _ *pb.ListInitiativesWithoutProjectsRequest) (*pb.ListInitiativesWithoutProjectsResponse, error) {
-	ds, _, err := h.prepare("", "")
+	ds, _, err := h.prepare("", "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +204,7 @@ func (h *Dashboard) ListInitiativesWithoutProjects(_ context.Context, _ *pb.List
 }
 
 func (h *Dashboard) ListTasksWithoutProject(_ context.Context, req *pb.ListTasksWithoutProjectRequest) (*pb.ListTasksWithoutProjectResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +212,7 @@ func (h *Dashboard) ListTasksWithoutProject(_ context.Context, req *pb.ListTasks
 }
 
 func (h *Dashboard) ListUnassignedTasks(_ context.Context, req *pb.ListUnassignedTasksRequest) (*pb.ListUnassignedTasksResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +220,7 @@ func (h *Dashboard) ListUnassignedTasks(_ context.Context, req *pb.ListUnassigne
 }
 
 func (h *Dashboard) ListMissingTimeline(_ context.Context, req *pb.ListMissingTimelineRequest) (*pb.ListMissingTimelineResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +228,7 @@ func (h *Dashboard) ListMissingTimeline(_ context.Context, req *pb.ListMissingTi
 }
 
 func (h *Dashboard) ListProjectsWithoutTasks(_ context.Context, req *pb.ListProjectsWithoutTasksRequest) (*pb.ListProjectsWithoutTasksResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), req.GetTeams())
 	if err != nil {
 		return nil, err
 	}

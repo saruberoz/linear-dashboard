@@ -145,3 +145,53 @@ func TestUnassignedTasksWithEffort(t *testing.T) {
 		t.Errorf("menu count = %d, want 2", n)
 	}
 }
+
+func TestForTeamsKeepsTheTeamsTasksAndProjects(t *testing.T) {
+	nov := at("2026-11-05 10:00")
+	tasks := []Task{
+		{ID: "fe1", TeamID: "fe", ProjectID: "shared", StateType: "backlog", CreatedAt: nov},
+		{ID: "be1", TeamID: "be", ProjectID: "beonly", StateType: "backlog", CreatedAt: nov},
+		{ID: "loose", TeamID: "fe", StateType: "backlog", CreatedAt: nov},
+	}
+	teams := []Team{{ID: "fe", Key: "FE"}, {ID: "be", Key: "BE"}}
+	d := NewDataset(time.Now(), teams, nil, nil,
+		[]Initiative{{ID: "ini", Name: "[W] Ini"}},
+		[]Project{
+			{ID: "shared", Name: "Shared", TeamIDs: []string{"be"}, InitiativeIDs: []string{"ini"}},
+			{ID: "beonly", Name: "BE only", TeamIDs: []string{"be"}, InitiativeIDs: []string{"ini"}},
+			{ID: "feempty", Name: "FE empty", TeamIDs: []string{"fe"}, CreatedAt: nov},
+			{ID: "beempty", Name: "BE empty", TeamIDs: []string{"be"}, CreatedAt: nov},
+		}, tasks)
+
+	fe := d.ForTeams(map[string]bool{"fe": true})
+
+	var gotTasks []string
+	for _, x := range fe.Tasks {
+		gotTasks = append(gotTasks, x.ID)
+	}
+	sort.Strings(gotTasks)
+	if want := []string{"fe1", "loose"}; !equal(gotTasks, want) {
+		t.Errorf("tasks = %v, want %v", gotTasks, want)
+	}
+	var gotProjects []string
+	for id := range fe.Projects {
+		gotProjects = append(gotProjects, id)
+	}
+	sort.Strings(gotProjects)
+	if want := []string{"feempty", "shared"}; !equal(gotProjects, want) {
+		t.Errorf("projects = %v, want %v (by task or by project team)", gotProjects, want)
+	}
+	if n := len(fe.Initiatives["ini"].ProjectIDs); n != 2 {
+		t.Errorf("initiative keeps %d projects, want its full list of 2", n)
+	}
+	var empty []string
+	for _, p := range fe.ProjectsWithoutTasks(housekeepingRange(t)).Projects {
+		empty = append(empty, p.Id)
+	}
+	if want := []string{"feempty"}; !equal(empty, want) {
+		t.Errorf("projects without tasks = %v, want %v", empty, want)
+	}
+	if n := len(d.Tasks); n != 3 {
+		t.Errorf("full dataset changed: %d tasks, want 3", n)
+	}
+}

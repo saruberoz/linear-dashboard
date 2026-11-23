@@ -26,16 +26,13 @@ type Dataset struct {
 func NewDataset(syncedAt time.Time, teams []Team, users []User, labels []Label,
 	initiatives []Initiative, projects []Project, tasks []Task) *Dataset {
 	d := &Dataset{
-		SyncedAt:       syncedAt,
-		Teams:          map[string]Team{},
-		Users:          map[string]User{},
-		Labels:         map[string]Label{},
-		Initiatives:    map[string]*Initiative{},
-		Projects:       map[string]*Project{},
-		Tasks:          tasks,
-		tasksByProject: map[string][]*Task{},
-		children:       map[string][]*Task{},
-		taskByID:       map[string]*Task{},
+		SyncedAt:    syncedAt,
+		Teams:       map[string]Team{},
+		Users:       map[string]User{},
+		Labels:      map[string]Label{},
+		Initiatives: map[string]*Initiative{},
+		Projects:    map[string]*Project{},
+		Tasks:       tasks,
 	}
 	for _, t := range teams {
 		d.Teams[t.ID] = t
@@ -66,6 +63,14 @@ func NewDataset(syncedAt time.Time, teams []Team, users []User, labels []Label,
 			}
 		}
 	}
+	d.indexTasks()
+	return d
+}
+
+func (d *Dataset) indexTasks() {
+	d.tasksByProject = map[string][]*Task{}
+	d.children = map[string][]*Task{}
+	d.taskByID = map[string]*Task{}
 	for i := range d.Tasks {
 		t := &d.Tasks[i]
 		d.taskByID[t.ID] = t
@@ -74,7 +79,42 @@ func NewDataset(syncedAt time.Time, teams []Team, users []User, labels []Label,
 			d.children[t.ParentID] = append(d.children[t.ParentID], t)
 		}
 	}
-	return d
+}
+
+// ForTeams narrows the dataset to the given teams: their tasks, and the projects
+// that belong to one of the teams or hold one of their tasks. Initiatives keep
+// their full project lists, so initiative housekeeping stays workspace-wide.
+// Task-derived fields keep their full-tree values: a parent whose sub-tasks sit
+// in another team still defers its estimate to them.
+func (d *Dataset) ForTeams(teamIDs map[string]bool) *Dataset {
+	out := &Dataset{
+		SyncedAt:    d.SyncedAt,
+		Teams:       d.Teams,
+		Users:       d.Users,
+		Labels:      d.Labels,
+		Initiatives: d.Initiatives,
+		Projects:    map[string]*Project{},
+	}
+	for i := range d.Tasks {
+		t := &d.Tasks[i]
+		if !teamIDs[t.TeamID] {
+			continue
+		}
+		out.Tasks = append(out.Tasks, *t)
+		if p := d.Projects[t.ProjectID]; p != nil {
+			out.Projects[p.ID] = p
+		}
+	}
+	for id, p := range d.Projects {
+		for _, tid := range p.TeamIDs {
+			if teamIDs[tid] {
+				out.Projects[id] = p
+				break
+			}
+		}
+	}
+	out.indexTasks()
+	return out
 }
 
 // TasksInRange returns the project's tasks that count in r.

@@ -87,7 +87,7 @@ func (s *Store) Close() { s.pool.Close() }
 // either the previous copy or the new one, never a mix.
 func (s *Store) Replace(ctx context.Context, ds *report.Dataset) error {
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		for _, table := range []string{"issue_labels", "issues", "initiative_projects", "project_labels",
+		for _, table := range []string{"issue_labels", "issues", "initiative_projects", "project_labels", "project_teams",
 			"projects", "initiatives", "labels", "users", "teams"} {
 			if _, err := tx.Exec(ctx, "DELETE FROM "+table+" WHERE true"); err != nil {
 				return fmt.Errorf("clearing %s: %w", table, err)
@@ -128,6 +128,7 @@ func copies(ds *report.Dataset) []tableCopy {
 	projects := tableCopy{table: "projects", columns: []string{"id", "name", "state", "url", "created_at", "segments", "start_date", "target_date"}}
 	plabels := tableCopy{table: "project_labels", columns: []string{"project_id", "label_id"}}
 	links := tableCopy{table: "initiative_projects", columns: []string{"initiative_id", "project_id"}}
+	pteams := tableCopy{table: "project_teams", columns: []string{"project_id", "team_id"}}
 	for _, p := range ds.Projects {
 		projects.rows = append(projects.rows, []any{p.ID, p.Name, p.State, p.URL, p.CreatedAt, nonNil(p.Segments),
 			nullString(p.StartDate), nullString(p.TargetDate)})
@@ -136,6 +137,9 @@ func copies(ds *report.Dataset) []tableCopy {
 		}
 		for _, i := range unique(p.InitiativeIDs) {
 			links.rows = append(links.rows, []any{i, p.ID})
+		}
+		for _, t := range unique(p.TeamIDs) {
+			pteams.rows = append(pteams.rows, []any{p.ID, t})
 		}
 	}
 	issues := tableCopy{table: "issues", columns: []string{"id", "identifier", "title", "url", "team_id", "project_id",
@@ -154,7 +158,7 @@ func copies(ds *report.Dataset) []tableCopy {
 			ilabels.rows = append(ilabels.rows, []any{t.ID, l})
 		}
 	}
-	return []tableCopy{teams, users, labels, inis, projects, plabels, links, issues, ilabels}
+	return []tableCopy{teams, users, labels, inis, projects, plabels, links, pteams, issues, ilabels}
 }
 
 // Load reads the stored workspace. It returns nil when nothing has been synced yet.
@@ -205,11 +209,12 @@ func (s *Store) Load(ctx context.Context) (*report.Dataset, error) {
 	}
 	const projectsSQL = `SELECT p.id, p.name, p.state, p.url, p.created_at, COALESCE(p.start_date, ''), COALESCE(p.target_date, ''),
 	  COALESCE((SELECT array_agg(label_id) FROM project_labels WHERE project_id = p.id), ARRAY[]::STRING[]),
-	  COALESCE((SELECT array_agg(initiative_id) FROM initiative_projects WHERE project_id = p.id), ARRAY[]::STRING[])
+	  COALESCE((SELECT array_agg(initiative_id) FROM initiative_projects WHERE project_id = p.id), ARRAY[]::STRING[]),
+	  COALESCE((SELECT array_agg(team_id) FROM project_teams WHERE project_id = p.id), ARRAY[]::STRING[])
 	FROM projects p`
 	if err := collect(ctx, s.pool, projectsSQL, func(r pgx.Rows) error {
 		var p report.Project
-		err := r.Scan(&p.ID, &p.Name, &p.State, &p.URL, &p.CreatedAt, &p.StartDate, &p.TargetDate, &p.LabelIDs, &p.InitiativeIDs)
+		err := r.Scan(&p.ID, &p.Name, &p.State, &p.URL, &p.CreatedAt, &p.StartDate, &p.TargetDate, &p.LabelIDs, &p.InitiativeIDs, &p.TeamIDs)
 		projects = append(projects, p)
 		return err
 	}); err != nil {

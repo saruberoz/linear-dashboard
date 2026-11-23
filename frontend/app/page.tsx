@@ -3,7 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { Dashboard } from "@/components/dashboard"
 import { BackendError, serverGet } from "@/lib/api"
 import type * as T from "@/lib/types"
-import { currentMonth, type View } from "@/lib/view"
+import { currentMonth, teamsOf, type View } from "@/lib/view"
 
 export const dynamic = "force-dynamic"
 
@@ -14,7 +14,7 @@ const one = (v: string | string[] | undefined) =>
 
 async function loadView(
   scope: string,
-  range: { from: string; to: string },
+  filter: { from: string; to: string; teams: string[] },
   sp: Record<string, string>
 ): Promise<View> {
   const [kind, ...rest] = scope.split(":")
@@ -27,7 +27,7 @@ async function loadView(
           id,
           data: await serverGet<T.SegmentResponse>(
             `segments/${encodeURIComponent(id)}`,
-            range
+            filter
           ),
         }
       case "initiative":
@@ -36,7 +36,7 @@ async function loadView(
           id,
           data: await serverGet<T.InitiativeResponse>(
             `initiatives/${encodeURIComponent(id)}`,
-            range
+            filter
           ),
         }
       case "project":
@@ -45,14 +45,14 @@ async function loadView(
           id,
           data: await serverGet<T.ProjectResponse>(
             `projects/${encodeURIComponent(id)}`,
-            range
+            filter
           ),
         }
       case "missing":
         return {
           kind,
           data: await serverGet<T.MissingResponse>("missing-estimates", {
-            ...range,
+            ...filter,
             scope: sp.mscope,
             all: sp.all === "1",
           }),
@@ -62,7 +62,7 @@ async function loadView(
           kind,
           data: await serverGet<T.WarningsResponse>(
             "warnings/segment-labels",
-            range
+            filter
           ),
         }
       case "untagged":
@@ -70,7 +70,7 @@ async function loadView(
           kind,
           data: await serverGet<T.ProjectListResponse>(
             "untagged-projects",
-            range
+            filter
           ),
         }
       case "noinit":
@@ -78,7 +78,7 @@ async function loadView(
           kind,
           data: await serverGet<T.ProjectListResponse>(
             "projects-without-initiative",
-            range
+            filter
           ),
         }
       case "dashboard": {
@@ -99,7 +99,7 @@ async function loadView(
           kind,
           data: await serverGet<T.AssigneeGroupsResponse>(
             "tasks-without-project",
-            range
+            filter
           ),
         }
       case "unassigned":
@@ -107,7 +107,7 @@ async function loadView(
           kind,
           data: await serverGet<T.UnassignedTasksResponse>(
             "unassigned-tasks",
-            range
+            filter
           ),
         }
       case "notimeline":
@@ -115,7 +115,7 @@ async function loadView(
           kind,
           data: await serverGet<T.MissingTimelineResponse>(
             "missing-timeline",
-            range
+            filter
           ),
         }
       case "notasks":
@@ -123,13 +123,13 @@ async function loadView(
           kind,
           data: await serverGet<T.ProjectListResponse>(
             "projects-without-tasks",
-            range
+            filter
           ),
         }
       default:
         return {
           kind: "all",
-          data: await serverGet<T.OverviewResponse>("overview", range),
+          data: await serverGet<T.OverviewResponse>("overview", filter),
         }
     }
   } catch (err) {
@@ -156,9 +156,10 @@ export default async function Page({
   )
   const month = currentMonth()
   const range = { from: sp.from || month.from, to: sp.to || month.to }
+  const filter = { ...range, teams: teamsOf(sp.teams) }
   const [menu, view, dashboards] = await Promise.all([
-    serverGet<T.MenuResponse>("menu", range).catch(() => null),
-    loadView(sp.scope || "all", range, sp),
+    serverGet<T.MenuResponse>("menu", filter).catch(() => null),
+    loadView(sp.scope || "all", filter, sp),
     serverGet<{ dashboards?: T.DashboardSummary[] }>("dashboards")
       .then((r) => r.dashboards ?? [])
       .catch(() => []),

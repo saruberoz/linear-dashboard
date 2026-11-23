@@ -110,7 +110,7 @@ func (h *Dashboard) DeleteInsight(ctx context.Context, req *pb.DeleteInsightRequ
 }
 
 func (h *Dashboard) RunInsight(_ context.Context, req *pb.RunInsightRequest) (*pb.RunInsightResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (h *Dashboard) RunInsight(_ context.Context, req *pb.RunInsightRequest) (*p
 }
 
 func (h *Dashboard) ListInsightTasks(_ context.Context, req *pb.ListInsightTasksRequest) (*pb.ListInsightTasksResponse, error) {
-	ds, r, err := h.prepare(req.GetFrom(), req.GetTo())
+	ds, r, err := h.prepare(req.GetFrom(), req.GetTo(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func (h *Dashboard) ListInsightTasks(_ context.Context, req *pb.ListInsightTasks
 }
 
 func (h *Dashboard) GetInsightOptions(_ context.Context, _ *pb.GetInsightOptionsRequest) (*pb.GetInsightOptionsResponse, error) {
-	ds, _, err := h.prepare("", "")
+	ds, _, err := h.prepare("", "", nil)
 	if err != nil {
 		return nil, err
 	}

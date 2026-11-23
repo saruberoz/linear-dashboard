@@ -83,6 +83,7 @@ type Project struct {
 	LabelIDs      []string
 	Segments      []string // derived: segment keys in canonical order
 	InitiativeIDs []string // all linked initiatives
+	TeamIDs       []string // teams the project belongs to
 	StartDate     string   // YYYY-MM-DD, "" when not set
 	TargetDate    string   // YYYY-MM-DD, "" when not set
 }

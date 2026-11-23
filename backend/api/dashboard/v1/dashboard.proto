@@ -10,6 +10,7 @@ option go_package = "linear-dashboard/backend/api/dashboard/v1;dashboardv1";
 //   "all" | "segment:<KEY>" | "initiative:<ID>" | "project:<ID>"
 // Segment keys: B2B, B2G, B2BNG, B2C, INTERNAL.
 // Dates are "YYYY-MM-DD", inclusive, Asia/Jakarta. Effort is in estimate points.
+// teams narrows a request to tasks of those teams and the projects they touch.
 
 service DashboardService {
   rpc GetMenu(GetMenuRequest) returns (GetMenuResponse) {
@@ -194,6 +195,7 @@ message InitiativeRef {
 message GetMenuRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message MenuProject {
@@ -226,6 +228,13 @@ message GetMenuResponse {
   int32 missing_timeline_count = 9; // canceled projects left out
   int32 empty_project_count = 10; // canceled projects left out
   int32 unassigned_task_count = 11; // unassigned tasks with effort in range
+  repeated TeamOption teams = 12; // every team, by name, for the team filter
+}
+
+message TeamOption {
+  string id = 1;
+  string key = 2;
+  string name = 3;
 }
 
 // ---------- overview ----------
@@ -233,6 +242,7 @@ message GetMenuResponse {
 message GetOverviewRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message SegmentShare {
@@ -267,6 +277,7 @@ message GetSegmentRequest {
   string segment = 1;
   string from = 2;
   string to = 3;
+  repeated string teams = 4; // team keys; empty means every team
 }
 
 message InitiativeGroup {
@@ -291,6 +302,7 @@ message GetInitiativeRequest {
   string id = 1;
   string from = 2;
   string to = 3;
+  repeated string teams = 4; // team keys; empty means every team
 }
 
 message GetInitiativeResponse {
@@ -306,6 +318,7 @@ message GetProjectRequest {
   string id = 1;
   string from = 2;
   string to = 3;
+  repeated string teams = 4; // team keys; empty means every team
 }
 
 message GetProjectResponse {
@@ -324,6 +337,7 @@ message ListTasksRequest {
   string dim = 4; // "priority" | "status" | "segment"
   string column = 5; // a column key, or "_total" / "_missing"
   string assignee_id = 6; // "_unassigned" for unassigned
+  repeated string teams = 7; // team keys; empty means every team
 }
 
 message ListTasksResponse {
@@ -338,6 +352,7 @@ message ListMissingEstimatesRequest {
   string from = 2;
   string to = 3;
   bool all = 4; // include untagged projects and tasks without a project
+  repeated string teams = 5; // team keys; empty means every team
 }
 
 message AssigneeGroup {
@@ -355,6 +370,7 @@ message ListMissingEstimatesResponse {
 message ListSegmentLabelWarningsRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message WarningGroup {
@@ -375,6 +391,7 @@ message ListSegmentLabelWarningsResponse {
 message ListUntaggedProjectsRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message ListUntaggedProjectsResponse {
@@ -384,6 +401,7 @@ message ListUntaggedProjectsResponse {
 message ListProjectsWithoutInitiativeRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message ListProjectsWithoutInitiativeResponse {
@@ -408,6 +426,7 @@ message ListInitiativesWithoutProjectsResponse {
 message ListTasksWithoutProjectRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message ListTasksWithoutProjectResponse {
@@ -418,6 +437,7 @@ message ListTasksWithoutProjectResponse {
 message ListUnassignedTasksRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 // Open tasks in range with no assignee that count more than 0 pts, largest first.
@@ -430,6 +450,7 @@ message ListUnassignedTasksResponse {
 message ListMissingTimelineRequest {
   string from = 1;
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message TimelineInitiative {
@@ -448,6 +469,7 @@ message ListMissingTimelineResponse {
 message ListProjectsWithoutTasksRequest {
   string from = 1; // only used for the row shape; the list ignores the range
   string to = 2;
+  repeated string teams = 3; // team keys; empty means every team
 }
 
 message ListProjectsWithoutTasksResponse {

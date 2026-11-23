@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTransition } from "react"
 import { DEFAULT_PROJECT_STATES } from "@/lib/constants"
+import { teamsOf } from "@/lib/view"
 
 /**
  * All dashboard state lives in the URL so any view can be shared as a link.
@@ -12,6 +13,7 @@ import { DEFAULT_PROJECT_STATES } from "@/lib/constants"
  *   via    breadcrumb path: segment:KEY or initiative:ID (never changes numbers)
  *   mscope Missing-estimates filter scope; all=1 adds untagged projects
  *   pstate Untagged-projects state filter, comma-separated; default: all but canceled
+ *   teams  Linear team keys, comma-separated, or all; default: DEFAULT_TEAMS
  */
 export function useDash() {
   const sp = useSearchParams()
@@ -39,6 +41,7 @@ export function useDash() {
     mscope: get("mscope"),
     all: get("all") === "1",
     pstate: get("pstate") ? get("pstate").split(",") : DEFAULT_PROJECT_STATES,
+    teams: teamsOf(get("teams")),
     href,
     set,
     pending,

@@ -18,10 +18,14 @@ async function parse<T>(res: Response): Promise<T> {
   return body as T
 }
 
-const query = (params: Record<string, string | boolean | undefined>) => {
+type Params = Record<string, string | string[] | boolean | undefined>
+
+const query = (params: Params) => {
   const q = new URLSearchParams()
-  for (const [k, v] of Object.entries(params))
-    if (v !== undefined && v !== "" && v !== false) q.set(k, String(v))
+  for (const [k, v] of Object.entries(params)) {
+    if (Array.isArray(v)) for (const x of v) q.append(k, x)
+    else if (v !== undefined && v !== "" && v !== false) q.set(k, String(v))
+  }
   const s = q.toString()
   return s ? `?${s}` : ""
 }
@@ -29,7 +33,7 @@ const query = (params: Record<string, string | boolean | undefined>) => {
 /** Server-side call straight to the backend (used by the page's server component). */
 export async function serverGet<T>(
   path: string,
-  params: Record<string, string | boolean | undefined> = {}
+  params: Params = {}
 ): Promise<T> {
   const backend = process.env.BACKEND_URL ?? "http://localhost:8000"
   return parse<T>(
@@ -40,7 +44,7 @@ export async function serverGet<T>(
 /** Browser-side call through the frontend's /api/v1 pass-through. */
 export async function clientFetch<T>(
   path: string,
-  params: Record<string, string | boolean | undefined> = {},
+  params: Params = {},
   init?: RequestInit
 ): Promise<T> {
   return parse<T>(
