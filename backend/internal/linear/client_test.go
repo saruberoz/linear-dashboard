@@ -172,3 +172,32 @@ func TestChangedSinceAsksOnlyForUpdatedTasks(t *testing.T) {
 		t.Errorf("query %q with since %v, want an updatedAt filter from 2026-11-23T07:00:00Z", q.Query, q.Variables["since"])
 	}
 }
+
+func TestDroppedConnectionRetriesReadsOnly(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) == 1 {
+			hj, _ := w.(http.Hijacker)
+			conn, _, _ := hj.Hijack()
+			_ = conn.Close() // drop the connection without answering
+			return
+		}
+		_, _ = io.WriteString(w, `{"data":{"viewer":{"id":"me"},"issueUpdate":{"success":true}}}`)
+	}))
+	defer srv.Close()
+
+	var out struct{ Viewer idRef }
+	if err := newTestClient(srv).do(context.Background(), "{ viewer { id } }", nil, &out); err != nil {
+		t.Fatalf("read after a dropped connection: %v", err)
+	}
+	if calls.Load() != 2 {
+		t.Errorf("read calls = %d, want 2 (one retry)", calls.Load())
+	}
+
+	calls.Store(0)
+	var res any
+	err := newTestClient(srv).do(context.Background(), `mutation { issueUpdate(id: "i1", input: {}) { success } }`, nil, &res)
+	if err == nil || calls.Load() != 1 {
+		t.Errorf("mutation err = %v after %d calls, want an error and no retry", err, calls.Load())
+	}
+}

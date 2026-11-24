@@ -10,6 +10,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -55,20 +56,32 @@ type gqlResponse struct {
 	Errors []gqlError      `json:"errors"`
 }
 
+// failure says whether a failed request may be sent again.
+type failure int
+
+const (
+	final       failure = iota
+	rateLimited         // Linear asked us to slow down: always safe to retry
+	dropped             // the connection failed: Linear may or may not have run it
+)
+
 // do runs one query and decodes its data into out. It retries rate-limit
-// responses with increasing delays. Errors never include the API key.
+// responses, and dropped connections for reads (not mutations, which might
+// have run already), with increasing delays. Errors never include the API key.
 func (c *Client) do(ctx context.Context, query string, vars map[string]any, out any) error {
 	body, err := json.Marshal(gqlRequest{Query: query, Variables: vars})
 	if err != nil {
 		return fmt.Errorf("encoding query: %w", err)
 	}
+	read := !strings.HasPrefix(strings.TrimSpace(query), "mutation")
 	delay := c.backoff
 	for attempt := 0; ; attempt++ {
-		limited, err := c.post(ctx, body, out)
+		kind, err := c.post(ctx, body, out)
 		if err == nil {
 			return nil
 		}
-		if !limited || attempt >= c.retries {
+		retry := kind == rateLimited || (kind == dropped && read && ctx.Err() == nil)
+		if !retry || attempt >= c.retries {
 			return err
 		}
 		wait := delay + time.Duration(rand.Int64N(int64(delay)/2+1))
@@ -81,44 +94,44 @@ func (c *Client) do(ctx context.Context, query string, vars map[string]any, out 
 	}
 }
 
-// post sends one request. limited reports whether the failure was a rate limit.
-func (c *Client) post(ctx context.Context, body []byte, out any) (limited bool, err error) {
+// post sends one request and says how it failed.
+func (c *Client) post(ctx context.Context, body []byte, out any) (failure, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
 	if err != nil {
-		return false, fmt.Errorf("building request: %w", err)
+		return final, fmt.Errorf("building request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", c.apiKey)
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("calling linear: %w", err)
+		return dropped, fmt.Errorf("calling linear: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return false, fmt.Errorf("reading linear response: %w", err)
+		return dropped, fmt.Errorf("reading linear response: %w", err)
 	}
 	if resp.StatusCode == http.StatusTooManyRequests {
-		return true, ErrRateLimited
+		return rateLimited, ErrRateLimited
 	}
 	var gr gqlResponse
 	if err := json.Unmarshal(raw, &gr); err != nil {
-		return false, fmt.Errorf("linear returned HTTP %d with an unreadable body", resp.StatusCode)
+		return final, fmt.Errorf("linear returned HTTP %d with an unreadable body", resp.StatusCode)
 	}
 	if len(gr.Errors) > 0 {
 		e := gr.Errors[0]
 		if e.Extensions.Code == "RATELIMITED" {
-			return true, ErrRateLimited
+			return rateLimited, ErrRateLimited
 		}
-		return false, fmt.Errorf("linear error (%s): %s", e.Extensions.Code, e.Message)
+		return final, fmt.Errorf("linear error (%s): %s", e.Extensions.Code, e.Message)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("linear returned HTTP %d", resp.StatusCode)
+		return final, fmt.Errorf("linear returned HTTP %d", resp.StatusCode)
 	}
 	if err := json.Unmarshal(gr.Data, out); err != nil {
-		return false, fmt.Errorf("decoding linear data: %w", err)
+		return final, fmt.Errorf("decoding linear data: %w", err)
 	}
-	return false, nil
+	return final, nil
 }
 
 type pageInfo struct {
