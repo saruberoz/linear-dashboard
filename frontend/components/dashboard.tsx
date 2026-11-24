@@ -61,6 +61,7 @@ import {
 import { TaskList } from "@/components/task-list"
 import { OpenInLinear } from "@/components/open-in-linear"
 import { CustomDashboardView } from "@/components/custom-dashboard"
+import { DecidedChanges, PendingChanges } from "@/components/frozen-changes"
 import {
   DEFAULT_PROJECT_STATES,
   PROJECT_STATES,
@@ -1124,6 +1125,29 @@ function EmptyInitiativesView({ d }: { d: T.EmptyInitiativesResponse }) {
   )
 }
 
+function FrozenChangesView({ d }: { d: T.FrozenChangesResponse }) {
+  const pending = d.pending ?? []
+  return (
+    <>
+      <Title meta="Completed work is frozen: the estimate of a completed task, the tasks and estimates of a completed project, and the projects of a completed [W] / [WS] initiative. When Linear changes it, the dashboard keeps the old value until the change is approved here. Reject undoes the change in Linear and leaves a comment there saying why.">
+        Pending changes
+      </Title>
+      <ItemsCard
+        title={`${pending.length} waiting`}
+        description="Approve: the dashboard takes the new value. Reject: Linear is set back to the old value."
+      >
+        <PendingChanges rows={pending} />
+      </ItemsCard>
+      <ItemsCard
+        title="Recently decided"
+        description="The last 50 decisions, and changes withdrawn because Linear changed back on its own."
+      >
+        <DecidedChanges rows={d.decided ?? []} />
+      </ItemsCard>
+    </>
+  )
+}
+
 function ErrorView({ error }: { error: T.ApiError }) {
   const noData = error.reason === "NO_DATA"
   return (
@@ -1211,6 +1235,7 @@ function useCrumbs(
         unassigned: "Unassigned tasks with effort",
         notasks: "Projects without tasks",
         notimeline: "Missing timeline",
+        frozen: "Pending changes",
         dashboard:
           view.kind === "dashboard"
             ? `Dashboards · ${view.data.name}`
@@ -1296,6 +1321,9 @@ export function Dashboard({
     case "notimeline":
       body = <MissingTimelineView d={view.data} />
       break
+    case "frozen":
+      body = <FrozenChangesView d={view.data} />
+      break
     case "dashboard":
       body = (
         <CustomDashboardView key={view.id} initial={view.data} range={range} />
@@ -1309,7 +1337,7 @@ export function Dashboard({
       <Header crumbs={crumbs} sync={menu?.sync ?? null} />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6">
         <div className="flex flex-wrap justify-end gap-2">
-          {view.kind !== "dashboard" && view.kind !== "emptyinit" && (
+          {!["dashboard", "emptyinit", "frozen"].includes(view.kind) && (
             <TeamFilter teams={menu?.teams ?? []} />
           )}
           <DateRange range={range} />

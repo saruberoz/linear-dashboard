@@ -112,7 +112,8 @@ func Run(ctx context.Context, cfg Config, logger *slog.Logger) error {
 		logger.Warn("marked abandoned syncs as failed", "count", n)
 	}
 
-	runner := snapshot.NewRunner(linear.New(cfg.LinearAPIKey), st, map[string]time.Duration{
+	lin := linear.New(cfg.LinearAPIKey)
+	runner := snapshot.NewRunner(lin, lin, st, map[string]time.Duration{
 		snapshot.TriggerManual:  cfg.SyncCooldown,
 		snapshot.TriggerRefresh: cfg.RefreshCooldown,
 	}, logger)
@@ -149,6 +150,7 @@ func Run(ctx context.Context, cfg Config, logger *slog.Logger) error {
 	h := handler.New(base, runner, st, cfg.TimeZone)
 	pb.RegisterDashboardServiceHTTPServer(srv, h)
 	pb.RegisterSyncServiceHTTPServer(srv, h)
+	pb.RegisterFreezeServiceHTTPServer(srv, h)
 	pb.RegisterInsightServiceHTTPServer(srv, h)
 	srv.HandleFunc("/healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) { w.WriteHeader(nethttp.StatusOK) })
 

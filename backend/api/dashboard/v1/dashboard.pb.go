@@ -1262,6 +1262,7 @@ type GetMenuResponse struct {
 	EmptyProjectCount    int32                  `protobuf:"varint,10,opt,name=empty_project_count,json=emptyProjectCount,proto3" json:"empty_project_count,omitempty"`         // canceled projects left out
 	UnassignedTaskCount  int32                  `protobuf:"varint,11,opt,name=unassigned_task_count,json=unassignedTaskCount,proto3" json:"unassigned_task_count,omitempty"`   // unassigned tasks with effort in range
 	Teams                []*TeamOption          `protobuf:"bytes,12,rep,name=teams,proto3" json:"teams,omitempty"`                                                             // every team, by name, for the team filter
+	PendingChangeCount   int32                  `protobuf:"varint,13,opt,name=pending_change_count,json=pendingChangeCount,proto3" json:"pending_change_count,omitempty"`      // frozen changes waiting for approval
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1378,6 +1379,13 @@ func (x *GetMenuResponse) GetTeams() []*TeamOption {
 		return x.Teams
 	}
 	return nil
+}
+
+func (x *GetMenuResponse) GetPendingChangeCount() int32 {
+	if x != nil {
+		return x.PendingChangeCount
+	}
+	return 0
 }
 
 type TeamOption struct {
@@ -3847,6 +3855,420 @@ func (x *GetSyncStatusResponse) GetSync() *SyncInfo {
 	return nil
 }
 
+type FrozenChange struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Kind     string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`                         // "estimate" | "project" | "initiative"
+	Status   string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`                     // "pending" | "approved" | "rejected" | "withdrawn"
+	What     string                 `protobuf:"bytes,4,opt,name=what,proto3" json:"what,omitempty"`                         // e.g. "Estimate", "Project", "Initiative [W] Payments"
+	OldValue string                 `protobuf:"bytes,5,opt,name=old_value,json=oldValue,proto3" json:"old_value,omitempty"` // e.g. "3 pts", "no project", "linked"
+	NewValue string                 `protobuf:"bytes,6,opt,name=new_value,json=newValue,proto3" json:"new_value,omitempty"`
+	FrozenBy string                 `protobuf:"bytes,7,opt,name=frozen_by,json=frozenBy,proto3" json:"frozen_by,omitempty"` // e.g. "the task was completed"
+	// The task for estimate and project changes, the project for initiative changes.
+	ItemIdentifier string `protobuf:"bytes,8,opt,name=item_identifier,json=itemIdentifier,proto3" json:"item_identifier,omitempty"` // task identifier, "" for a project
+	ItemTitle      string `protobuf:"bytes,9,opt,name=item_title,json=itemTitle,proto3" json:"item_title,omitempty"`
+	ItemUrl        string `protobuf:"bytes,10,opt,name=item_url,json=itemUrl,proto3" json:"item_url,omitempty"`
+	DetectedAt     string `protobuf:"bytes,11,opt,name=detected_at,json=detectedAt,proto3" json:"detected_at,omitempty"` // RFC 3339
+	DecidedAt      string `protobuf:"bytes,12,opt,name=decided_at,json=decidedAt,proto3" json:"decided_at,omitempty"`    // RFC 3339, "" while pending
+	Reason         string `protobuf:"bytes,13,opt,name=reason,proto3" json:"reason,omitempty"`                           // the rejecter's reason
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FrozenChange) Reset() {
+	*x = FrozenChange{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FrozenChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FrozenChange) ProtoMessage() {}
+
+func (x *FrozenChange) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FrozenChange.ProtoReflect.Descriptor instead.
+func (*FrozenChange) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *FrozenChange) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *FrozenChange) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetWhat() string {
+	if x != nil {
+		return x.What
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetOldValue() string {
+	if x != nil {
+		return x.OldValue
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetNewValue() string {
+	if x != nil {
+		return x.NewValue
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetFrozenBy() string {
+	if x != nil {
+		return x.FrozenBy
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetItemIdentifier() string {
+	if x != nil {
+		return x.ItemIdentifier
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetItemTitle() string {
+	if x != nil {
+		return x.ItemTitle
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetItemUrl() string {
+	if x != nil {
+		return x.ItemUrl
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetDetectedAt() string {
+	if x != nil {
+		return x.DetectedAt
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetDecidedAt() string {
+	if x != nil {
+		return x.DecidedAt
+	}
+	return ""
+}
+
+func (x *FrozenChange) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ListFrozenChangesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFrozenChangesRequest) Reset() {
+	*x = ListFrozenChangesRequest{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFrozenChangesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFrozenChangesRequest) ProtoMessage() {}
+
+func (x *ListFrozenChangesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFrozenChangesRequest.ProtoReflect.Descriptor instead.
+func (*ListFrozenChangesRequest) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{56}
+}
+
+type ListFrozenChangesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pending       []*FrozenChange        `protobuf:"bytes,1,rep,name=pending,proto3" json:"pending,omitempty"` // newest first
+	Decided       []*FrozenChange        `protobuf:"bytes,2,rep,name=decided,proto3" json:"decided,omitempty"` // the 50 most recently decided or withdrawn
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFrozenChangesResponse) Reset() {
+	*x = ListFrozenChangesResponse{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFrozenChangesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFrozenChangesResponse) ProtoMessage() {}
+
+func (x *ListFrozenChangesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFrozenChangesResponse.ProtoReflect.Descriptor instead.
+func (*ListFrozenChangesResponse) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *ListFrozenChangesResponse) GetPending() []*FrozenChange {
+	if x != nil {
+		return x.Pending
+	}
+	return nil
+}
+
+func (x *ListFrozenChangesResponse) GetDecided() []*FrozenChange {
+	if x != nil {
+		return x.Decided
+	}
+	return nil
+}
+
+type ApproveFrozenChangeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveFrozenChangeRequest) Reset() {
+	*x = ApproveFrozenChangeRequest{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveFrozenChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveFrozenChangeRequest) ProtoMessage() {}
+
+func (x *ApproveFrozenChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveFrozenChangeRequest.ProtoReflect.Descriptor instead.
+func (*ApproveFrozenChangeRequest) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *ApproveFrozenChangeRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type RejectFrozenChangeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"` // optional; added to the note in Linear
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectFrozenChangeRequest) Reset() {
+	*x = RejectFrozenChangeRequest{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectFrozenChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectFrozenChangeRequest) ProtoMessage() {}
+
+func (x *RejectFrozenChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectFrozenChangeRequest.ProtoReflect.Descriptor instead.
+func (*RejectFrozenChangeRequest) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *RejectFrozenChangeRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *RejectFrozenChangeRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// Both decisions reply with the lists after the decision.
+type ApproveFrozenChangeResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Changes       *ListFrozenChangesResponse `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveFrozenChangeResponse) Reset() {
+	*x = ApproveFrozenChangeResponse{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveFrozenChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveFrozenChangeResponse) ProtoMessage() {}
+
+func (x *ApproveFrozenChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveFrozenChangeResponse.ProtoReflect.Descriptor instead.
+func (*ApproveFrozenChangeResponse) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *ApproveFrozenChangeResponse) GetChanges() *ListFrozenChangesResponse {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
+type RejectFrozenChangeResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Changes       *ListFrozenChangesResponse `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectFrozenChangeResponse) Reset() {
+	*x = RejectFrozenChangeResponse{}
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectFrozenChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectFrozenChangeResponse) ProtoMessage() {}
+
+func (x *RejectFrozenChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dashboard_v1_dashboard_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectFrozenChangeResponse.ProtoReflect.Descriptor instead.
+func (*RejectFrozenChangeResponse) Descriptor() ([]byte, []int) {
+	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *RejectFrozenChangeResponse) GetChanges() *ListFrozenChangesResponse {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
 var File_dashboard_v1_dashboard_proto protoreflect.FileDescriptor
 
 const file_dashboard_v1_dashboard_proto_rawDesc = "" +
@@ -3978,7 +4400,7 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12#\n" +
 	"\rproject_count\x18\x03 \x01(\x05R\fprojectCount\x12>\n" +
-	"\vinitiatives\x18\x04 \x03(\v2\x1c.dashboard.v1.MenuInitiativeR\vinitiatives\"\xc8\x04\n" +
+	"\vinitiatives\x18\x04 \x03(\v2\x1c.dashboard.v1.MenuInitiativeR\vinitiatives\"\xfa\x04\n" +
 	"\x0fGetMenuResponse\x125\n" +
 	"\bsegments\x18\x01 \x03(\v2\x19.dashboard.v1.MenuSegmentR\bsegments\x12#\n" +
 	"\rmissing_count\x18\x02 \x01(\x05R\fmissingCount\x12#\n" +
@@ -3992,7 +4414,8 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x13empty_project_count\x18\n" +
 	" \x01(\x05R\x11emptyProjectCount\x122\n" +
 	"\x15unassigned_task_count\x18\v \x01(\x05R\x13unassignedTaskCount\x12.\n" +
-	"\x05teams\x18\f \x03(\v2\x18.dashboard.v1.TeamOptionR\x05teams\"B\n" +
+	"\x05teams\x18\f \x03(\v2\x18.dashboard.v1.TeamOptionR\x05teams\x120\n" +
+	"\x14pending_change_count\x18\r \x01(\x05R\x12pendingChangeCount\"B\n" +
 	"\n" +
 	"TeamOption\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
@@ -4169,7 +4592,38 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x04sync\x18\x01 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync\"\x16\n" +
 	"\x14GetSyncStatusRequest\"C\n" +
 	"\x15GetSyncStatusResponse\x12*\n" +
-	"\x04sync\x18\x01 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync2\x89\x10\n" +
+	"\x04sync\x18\x01 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync\"\xf0\x02\n" +
+	"\fFrozenChange\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x12\n" +
+	"\x04what\x18\x04 \x01(\tR\x04what\x12\x1b\n" +
+	"\told_value\x18\x05 \x01(\tR\boldValue\x12\x1b\n" +
+	"\tnew_value\x18\x06 \x01(\tR\bnewValue\x12\x1b\n" +
+	"\tfrozen_by\x18\a \x01(\tR\bfrozenBy\x12'\n" +
+	"\x0fitem_identifier\x18\b \x01(\tR\x0eitemIdentifier\x12\x1d\n" +
+	"\n" +
+	"item_title\x18\t \x01(\tR\titemTitle\x12\x19\n" +
+	"\bitem_url\x18\n" +
+	" \x01(\tR\aitemUrl\x12\x1f\n" +
+	"\vdetected_at\x18\v \x01(\tR\n" +
+	"detectedAt\x12\x1d\n" +
+	"\n" +
+	"decided_at\x18\f \x01(\tR\tdecidedAt\x12\x16\n" +
+	"\x06reason\x18\r \x01(\tR\x06reason\"\x1a\n" +
+	"\x18ListFrozenChangesRequest\"\x87\x01\n" +
+	"\x19ListFrozenChangesResponse\x124\n" +
+	"\apending\x18\x01 \x03(\v2\x1a.dashboard.v1.FrozenChangeR\apending\x124\n" +
+	"\adecided\x18\x02 \x03(\v2\x1a.dashboard.v1.FrozenChangeR\adecided\",\n" +
+	"\x1aApproveFrozenChangeRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"C\n" +
+	"\x19RejectFrozenChangeRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"`\n" +
+	"\x1bApproveFrozenChangeResponse\x12A\n" +
+	"\achanges\x18\x01 \x01(\v2'.dashboard.v1.ListFrozenChangesResponseR\achanges\"_\n" +
+	"\x1aRejectFrozenChangeResponse\x12A\n" +
+	"\achanges\x18\x01 \x01(\v2'.dashboard.v1.ListFrozenChangesResponseR\achanges2\x89\x10\n" +
 	"\x10DashboardService\x12X\n" +
 	"\aGetMenu\x12\x1c.dashboard.v1.GetMenuRequest\x1a\x1d.dashboard.v1.GetMenuResponse\"\x10\x82\xd3\xe4\x93\x02\n" +
 	"\x12\b/v1/menu\x12h\n" +
@@ -4188,7 +4642,11 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x17ListTasksWithoutProject\x12,.dashboard.v1.ListTasksWithoutProjectRequest\x1a-.dashboard.v1.ListTasksWithoutProjectResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/v1/tasks-without-project\x12\x88\x01\n" +
 	"\x13ListMissingTimeline\x12(.dashboard.v1.ListMissingTimelineRequest\x1a).dashboard.v1.ListMissingTimelineResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/v1/missing-timeline\x12\x88\x01\n" +
 	"\x13ListUnassignedTasks\x12(.dashboard.v1.ListUnassignedTasksRequest\x1a).dashboard.v1.ListUnassignedTasksResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/v1/unassigned-tasks\x12\x9d\x01\n" +
-	"\x18ListProjectsWithoutTasks\x12-.dashboard.v1.ListProjectsWithoutTasksRequest\x1a..dashboard.v1.ListProjectsWithoutTasksResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/v1/projects-without-tasks2\xdc\x01\n" +
+	"\x18ListProjectsWithoutTasks\x12-.dashboard.v1.ListProjectsWithoutTasksRequest\x1a..dashboard.v1.ListProjectsWithoutTasksResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/v1/projects-without-tasks2\xc0\x03\n" +
+	"\rFreezeService\x12\x80\x01\n" +
+	"\x11ListFrozenChanges\x12&.dashboard.v1.ListFrozenChangesRequest\x1a'.dashboard.v1.ListFrozenChangesResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/v1/frozen-changes\x12\x96\x01\n" +
+	"\x13ApproveFrozenChange\x12(.dashboard.v1.ApproveFrozenChangeRequest\x1a).dashboard.v1.ApproveFrozenChangeResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/v1/frozen-changes/{id}/approve\x12\x92\x01\n" +
+	"\x12RejectFrozenChange\x12'.dashboard.v1.RejectFrozenChangeRequest\x1a(.dashboard.v1.RejectFrozenChangeResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/v1/frozen-changes/{id}/reject2\xdc\x01\n" +
 	"\vSyncService\x12a\n" +
 	"\tStartSync\x12\x1e.dashboard.v1.StartSyncRequest\x1a\x1f.dashboard.v1.StartSyncResponse\"\x13\x82\xd3\xe4\x93\x02\r:\x01*\"\b/v1/sync\x12j\n" +
 	"\rGetSyncStatus\x12\".dashboard.v1.GetSyncStatusRequest\x1a#.dashboard.v1.GetSyncStatusResponse\"\x10\x82\xd3\xe4\x93\x02\n" +
@@ -4207,7 +4665,7 @@ func file_dashboard_v1_dashboard_proto_rawDescGZIP() []byte {
 	return file_dashboard_v1_dashboard_proto_rawDescData
 }
 
-var file_dashboard_v1_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 56)
+var file_dashboard_v1_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 63)
 var file_dashboard_v1_dashboard_proto_goTypes = []any{
 	(*SyncInfo)(nil),                               // 0: dashboard.v1.SyncInfo
 	(*StatusSplit)(nil),                            // 1: dashboard.v1.StatusSplit
@@ -4264,10 +4722,17 @@ var file_dashboard_v1_dashboard_proto_goTypes = []any{
 	(*StartSyncResponse)(nil),                      // 52: dashboard.v1.StartSyncResponse
 	(*GetSyncStatusRequest)(nil),                   // 53: dashboard.v1.GetSyncStatusRequest
 	(*GetSyncStatusResponse)(nil),                  // 54: dashboard.v1.GetSyncStatusResponse
-	nil,                                            // 55: dashboard.v1.ContributorRow.CellsEntry
+	(*FrozenChange)(nil),                           // 55: dashboard.v1.FrozenChange
+	(*ListFrozenChangesRequest)(nil),               // 56: dashboard.v1.ListFrozenChangesRequest
+	(*ListFrozenChangesResponse)(nil),              // 57: dashboard.v1.ListFrozenChangesResponse
+	(*ApproveFrozenChangeRequest)(nil),             // 58: dashboard.v1.ApproveFrozenChangeRequest
+	(*RejectFrozenChangeRequest)(nil),              // 59: dashboard.v1.RejectFrozenChangeRequest
+	(*ApproveFrozenChangeResponse)(nil),            // 60: dashboard.v1.ApproveFrozenChangeResponse
+	(*RejectFrozenChangeResponse)(nil),             // 61: dashboard.v1.RejectFrozenChangeResponse
+	nil,                                            // 62: dashboard.v1.ContributorRow.CellsEntry
 }
 var file_dashboard_v1_dashboard_proto_depIdxs = []int32{
-	55, // 0: dashboard.v1.ContributorRow.cells:type_name -> dashboard.v1.ContributorRow.CellsEntry
+	62, // 0: dashboard.v1.ContributorRow.cells:type_name -> dashboard.v1.ContributorRow.CellsEntry
 	2,  // 1: dashboard.v1.ContributorTable.columns:type_name -> dashboard.v1.Breakdown
 	4,  // 2: dashboard.v1.ContributorTable.rows:type_name -> dashboard.v1.ContributorRow
 	1,  // 3: dashboard.v1.Summary.by_status:type_name -> dashboard.v1.StatusSplit
@@ -4309,46 +4774,56 @@ var file_dashboard_v1_dashboard_proto_depIdxs = []int32{
 	7,  // 39: dashboard.v1.ListProjectsWithoutTasksResponse.projects:type_name -> dashboard.v1.ProjectRow
 	0,  // 40: dashboard.v1.StartSyncResponse.sync:type_name -> dashboard.v1.SyncInfo
 	0,  // 41: dashboard.v1.GetSyncStatusResponse.sync:type_name -> dashboard.v1.SyncInfo
-	3,  // 42: dashboard.v1.ContributorRow.CellsEntry.value:type_name -> dashboard.v1.ContributorCell
-	10, // 43: dashboard.v1.DashboardService.GetMenu:input_type -> dashboard.v1.GetMenuRequest
-	16, // 44: dashboard.v1.DashboardService.GetOverview:input_type -> dashboard.v1.GetOverviewRequest
-	20, // 45: dashboard.v1.DashboardService.GetSegment:input_type -> dashboard.v1.GetSegmentRequest
-	23, // 46: dashboard.v1.DashboardService.GetInitiative:input_type -> dashboard.v1.GetInitiativeRequest
-	25, // 47: dashboard.v1.DashboardService.GetProject:input_type -> dashboard.v1.GetProjectRequest
-	27, // 48: dashboard.v1.DashboardService.ListTasks:input_type -> dashboard.v1.ListTasksRequest
-	29, // 49: dashboard.v1.DashboardService.ListMissingEstimates:input_type -> dashboard.v1.ListMissingEstimatesRequest
-	32, // 50: dashboard.v1.DashboardService.ListSegmentLabelWarnings:input_type -> dashboard.v1.ListSegmentLabelWarningsRequest
-	35, // 51: dashboard.v1.DashboardService.ListUntaggedProjects:input_type -> dashboard.v1.ListUntaggedProjectsRequest
-	37, // 52: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:input_type -> dashboard.v1.ListProjectsWithoutInitiativeRequest
-	39, // 53: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:input_type -> dashboard.v1.ListInitiativesWithoutProjectsRequest
-	42, // 54: dashboard.v1.DashboardService.ListTasksWithoutProject:input_type -> dashboard.v1.ListTasksWithoutProjectRequest
-	46, // 55: dashboard.v1.DashboardService.ListMissingTimeline:input_type -> dashboard.v1.ListMissingTimelineRequest
-	44, // 56: dashboard.v1.DashboardService.ListUnassignedTasks:input_type -> dashboard.v1.ListUnassignedTasksRequest
-	49, // 57: dashboard.v1.DashboardService.ListProjectsWithoutTasks:input_type -> dashboard.v1.ListProjectsWithoutTasksRequest
-	51, // 58: dashboard.v1.SyncService.StartSync:input_type -> dashboard.v1.StartSyncRequest
-	53, // 59: dashboard.v1.SyncService.GetSyncStatus:input_type -> dashboard.v1.GetSyncStatusRequest
-	14, // 60: dashboard.v1.DashboardService.GetMenu:output_type -> dashboard.v1.GetMenuResponse
-	19, // 61: dashboard.v1.DashboardService.GetOverview:output_type -> dashboard.v1.GetOverviewResponse
-	22, // 62: dashboard.v1.DashboardService.GetSegment:output_type -> dashboard.v1.GetSegmentResponse
-	24, // 63: dashboard.v1.DashboardService.GetInitiative:output_type -> dashboard.v1.GetInitiativeResponse
-	26, // 64: dashboard.v1.DashboardService.GetProject:output_type -> dashboard.v1.GetProjectResponse
-	28, // 65: dashboard.v1.DashboardService.ListTasks:output_type -> dashboard.v1.ListTasksResponse
-	31, // 66: dashboard.v1.DashboardService.ListMissingEstimates:output_type -> dashboard.v1.ListMissingEstimatesResponse
-	34, // 67: dashboard.v1.DashboardService.ListSegmentLabelWarnings:output_type -> dashboard.v1.ListSegmentLabelWarningsResponse
-	36, // 68: dashboard.v1.DashboardService.ListUntaggedProjects:output_type -> dashboard.v1.ListUntaggedProjectsResponse
-	38, // 69: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:output_type -> dashboard.v1.ListProjectsWithoutInitiativeResponse
-	41, // 70: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:output_type -> dashboard.v1.ListInitiativesWithoutProjectsResponse
-	43, // 71: dashboard.v1.DashboardService.ListTasksWithoutProject:output_type -> dashboard.v1.ListTasksWithoutProjectResponse
-	48, // 72: dashboard.v1.DashboardService.ListMissingTimeline:output_type -> dashboard.v1.ListMissingTimelineResponse
-	45, // 73: dashboard.v1.DashboardService.ListUnassignedTasks:output_type -> dashboard.v1.ListUnassignedTasksResponse
-	50, // 74: dashboard.v1.DashboardService.ListProjectsWithoutTasks:output_type -> dashboard.v1.ListProjectsWithoutTasksResponse
-	52, // 75: dashboard.v1.SyncService.StartSync:output_type -> dashboard.v1.StartSyncResponse
-	54, // 76: dashboard.v1.SyncService.GetSyncStatus:output_type -> dashboard.v1.GetSyncStatusResponse
-	60, // [60:77] is the sub-list for method output_type
-	43, // [43:60] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	55, // 42: dashboard.v1.ListFrozenChangesResponse.pending:type_name -> dashboard.v1.FrozenChange
+	55, // 43: dashboard.v1.ListFrozenChangesResponse.decided:type_name -> dashboard.v1.FrozenChange
+	57, // 44: dashboard.v1.ApproveFrozenChangeResponse.changes:type_name -> dashboard.v1.ListFrozenChangesResponse
+	57, // 45: dashboard.v1.RejectFrozenChangeResponse.changes:type_name -> dashboard.v1.ListFrozenChangesResponse
+	3,  // 46: dashboard.v1.ContributorRow.CellsEntry.value:type_name -> dashboard.v1.ContributorCell
+	10, // 47: dashboard.v1.DashboardService.GetMenu:input_type -> dashboard.v1.GetMenuRequest
+	16, // 48: dashboard.v1.DashboardService.GetOverview:input_type -> dashboard.v1.GetOverviewRequest
+	20, // 49: dashboard.v1.DashboardService.GetSegment:input_type -> dashboard.v1.GetSegmentRequest
+	23, // 50: dashboard.v1.DashboardService.GetInitiative:input_type -> dashboard.v1.GetInitiativeRequest
+	25, // 51: dashboard.v1.DashboardService.GetProject:input_type -> dashboard.v1.GetProjectRequest
+	27, // 52: dashboard.v1.DashboardService.ListTasks:input_type -> dashboard.v1.ListTasksRequest
+	29, // 53: dashboard.v1.DashboardService.ListMissingEstimates:input_type -> dashboard.v1.ListMissingEstimatesRequest
+	32, // 54: dashboard.v1.DashboardService.ListSegmentLabelWarnings:input_type -> dashboard.v1.ListSegmentLabelWarningsRequest
+	35, // 55: dashboard.v1.DashboardService.ListUntaggedProjects:input_type -> dashboard.v1.ListUntaggedProjectsRequest
+	37, // 56: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:input_type -> dashboard.v1.ListProjectsWithoutInitiativeRequest
+	39, // 57: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:input_type -> dashboard.v1.ListInitiativesWithoutProjectsRequest
+	42, // 58: dashboard.v1.DashboardService.ListTasksWithoutProject:input_type -> dashboard.v1.ListTasksWithoutProjectRequest
+	46, // 59: dashboard.v1.DashboardService.ListMissingTimeline:input_type -> dashboard.v1.ListMissingTimelineRequest
+	44, // 60: dashboard.v1.DashboardService.ListUnassignedTasks:input_type -> dashboard.v1.ListUnassignedTasksRequest
+	49, // 61: dashboard.v1.DashboardService.ListProjectsWithoutTasks:input_type -> dashboard.v1.ListProjectsWithoutTasksRequest
+	56, // 62: dashboard.v1.FreezeService.ListFrozenChanges:input_type -> dashboard.v1.ListFrozenChangesRequest
+	58, // 63: dashboard.v1.FreezeService.ApproveFrozenChange:input_type -> dashboard.v1.ApproveFrozenChangeRequest
+	59, // 64: dashboard.v1.FreezeService.RejectFrozenChange:input_type -> dashboard.v1.RejectFrozenChangeRequest
+	51, // 65: dashboard.v1.SyncService.StartSync:input_type -> dashboard.v1.StartSyncRequest
+	53, // 66: dashboard.v1.SyncService.GetSyncStatus:input_type -> dashboard.v1.GetSyncStatusRequest
+	14, // 67: dashboard.v1.DashboardService.GetMenu:output_type -> dashboard.v1.GetMenuResponse
+	19, // 68: dashboard.v1.DashboardService.GetOverview:output_type -> dashboard.v1.GetOverviewResponse
+	22, // 69: dashboard.v1.DashboardService.GetSegment:output_type -> dashboard.v1.GetSegmentResponse
+	24, // 70: dashboard.v1.DashboardService.GetInitiative:output_type -> dashboard.v1.GetInitiativeResponse
+	26, // 71: dashboard.v1.DashboardService.GetProject:output_type -> dashboard.v1.GetProjectResponse
+	28, // 72: dashboard.v1.DashboardService.ListTasks:output_type -> dashboard.v1.ListTasksResponse
+	31, // 73: dashboard.v1.DashboardService.ListMissingEstimates:output_type -> dashboard.v1.ListMissingEstimatesResponse
+	34, // 74: dashboard.v1.DashboardService.ListSegmentLabelWarnings:output_type -> dashboard.v1.ListSegmentLabelWarningsResponse
+	36, // 75: dashboard.v1.DashboardService.ListUntaggedProjects:output_type -> dashboard.v1.ListUntaggedProjectsResponse
+	38, // 76: dashboard.v1.DashboardService.ListProjectsWithoutInitiative:output_type -> dashboard.v1.ListProjectsWithoutInitiativeResponse
+	41, // 77: dashboard.v1.DashboardService.ListInitiativesWithoutProjects:output_type -> dashboard.v1.ListInitiativesWithoutProjectsResponse
+	43, // 78: dashboard.v1.DashboardService.ListTasksWithoutProject:output_type -> dashboard.v1.ListTasksWithoutProjectResponse
+	48, // 79: dashboard.v1.DashboardService.ListMissingTimeline:output_type -> dashboard.v1.ListMissingTimelineResponse
+	45, // 80: dashboard.v1.DashboardService.ListUnassignedTasks:output_type -> dashboard.v1.ListUnassignedTasksResponse
+	50, // 81: dashboard.v1.DashboardService.ListProjectsWithoutTasks:output_type -> dashboard.v1.ListProjectsWithoutTasksResponse
+	57, // 82: dashboard.v1.FreezeService.ListFrozenChanges:output_type -> dashboard.v1.ListFrozenChangesResponse
+	60, // 83: dashboard.v1.FreezeService.ApproveFrozenChange:output_type -> dashboard.v1.ApproveFrozenChangeResponse
+	61, // 84: dashboard.v1.FreezeService.RejectFrozenChange:output_type -> dashboard.v1.RejectFrozenChangeResponse
+	52, // 85: dashboard.v1.SyncService.StartSync:output_type -> dashboard.v1.StartSyncResponse
+	54, // 86: dashboard.v1.SyncService.GetSyncStatus:output_type -> dashboard.v1.GetSyncStatusResponse
+	67, // [67:87] is the sub-list for method output_type
+	47, // [47:67] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_dashboard_v1_dashboard_proto_init() }
@@ -4362,9 +4837,9 @@ func file_dashboard_v1_dashboard_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dashboard_v1_dashboard_proto_rawDesc), len(file_dashboard_v1_dashboard_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   56,
+			NumMessages:   63,
 			NumExtensions: 0,
-			NumServices:   2,
+			NumServices:   3,
 		},
 		GoTypes:           file_dashboard_v1_dashboard_proto_goTypes,
 		DependencyIndexes: file_dashboard_v1_dashboard_proto_depIdxs,

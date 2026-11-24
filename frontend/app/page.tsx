@@ -118,6 +118,11 @@ async function loadView(
             filter
           ),
         }
+      case "frozen":
+        return {
+          kind,
+          data: await serverGet<T.FrozenChangesResponse>("frozen-changes"),
+        }
       case "notasks":
         return {
           kind,

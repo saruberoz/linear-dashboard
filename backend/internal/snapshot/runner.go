@@ -43,10 +43,28 @@ type Fetcher interface {
 	FetchWorkspace(ctx context.Context, since time.Time, progress func(int)) (*linear.Workspace, error)
 }
 
+// Writer undoes a rejected change in Linear and leaves a note there.
+type Writer interface {
+	SetEstimate(ctx context.Context, issueID string, estimate *float64) error
+	SetProject(ctx context.Context, issueID, projectID string) error
+	LinkProject(ctx context.Context, projectID, initiativeID string) error
+	UnlinkProject(ctx context.Context, projectID, initiativeID string) error
+	Comment(ctx context.Context, target linear.CommentTarget, body string) error
+}
+
+// ErrLinearWrite is returned when Linear refused to undo a rejected change;
+// nothing was changed then.
+var ErrLinearWrite = errors.New("snapshot: Linear refused to undo the change")
+
+// ErrNoteFailed is returned when a rejected change was undone in Linear but
+// the note explaining it could not be written.
+var ErrNoteFailed = errors.New("snapshot: the change was undone in Linear, but the note could not be written")
+
 // Runner runs one sync at a time. Only one backend process runs syncs, so an
 // in-process lock is enough; abandoned "running" rows are cleared at startup.
 type Runner struct {
 	fetch     Fetcher
+	write     Writer
 	store     *store.Store
 	cooldowns map[string]time.Duration // per trigger; triggers not listed have none
 	timeout   time.Duration
@@ -68,8 +86,8 @@ const savingPercent = 95
 
 // NewRunner returns a runner. cooldowns holds the minimum time between two
 // starts of the same trigger, for the triggers people press (manual, refresh).
-func NewRunner(f Fetcher, s *store.Store, cooldowns map[string]time.Duration, logger *slog.Logger) *Runner {
-	return &Runner{fetch: f, store: s, cooldowns: cooldowns, timeout: 30 * time.Minute, logger: logger}
+func NewRunner(f Fetcher, w Writer, s *store.Store, cooldowns map[string]time.Duration, logger *slog.Logger) *Runner {
+	return &Runner{fetch: f, write: w, store: s, cooldowns: cooldowns, timeout: 30 * time.Minute, logger: logger}
 }
 
 // Dataset returns the current workspace copy, or nil before the first successful sync.
@@ -191,9 +209,21 @@ func (r *Runner) run(ctx context.Context, trigger string) (map[string]int, error
 	}
 	ws.Tasks = countable(ws.Tasks)
 	changed := len(ws.Tasks)
+	rechecked := func(report.FrozenChange) bool { return true }
 	if !since.IsZero() {
+		refetched := map[string]bool{}
+		for _, t := range ws.Tasks {
+			refetched[t.ID] = true
+		}
+		for _, id := range ws.TrashedIDs {
+			refetched[id] = true
+		}
+		// A refresh only sees tasks Linear changed, so a pending task change is
+		// rechecked only when its task came back; projects always come back.
+		rechecked = func(c report.FrozenChange) bool { return c.Kind == report.ChangeInitiative || refetched[c.TaskID] }
 		ws.Tasks = mergeTasks(current.Tasks, ws.Tasks, ws.TrashedIDs)
 	}
+	held := report.Freeze(current, ws.Tasks, ws.Projects)
 	r.saving.Store(true)
 	teams := map[string]report.Team{}
 	for _, t := range ws.Teams {
@@ -213,11 +243,92 @@ func (r *Runner) run(ctx context.Context, trigger string) (map[string]int, error
 	if !since.IsZero() {
 		stats["changed_tasks"] = changed
 	}
-	if err := r.store.Replace(ctx, ds); err != nil {
+	stats["frozen_held"] = len(held)
+	if err := r.store.Replace(ctx, ds, store.FrozenUpdate{Held: held, Rechecked: rechecked}); err != nil {
 		return stats, err
 	}
 	r.current.Store(ds)
 	return stats, nil
+}
+
+// Approve accepts a pending change: the dashboard takes Linear's new value and
+// recounts. It refuses while a sync runs.
+func (r *Runner) Approve(ctx context.Context, id int64) error {
+	if !r.mu.TryLock() {
+		return ErrRunning
+	}
+	defer r.mu.Unlock()
+	c, current, err := r.pending(ctx, id)
+	if err != nil {
+		return err
+	}
+	ds, err := current.WithChange(c.FrozenChange)
+	if err != nil {
+		return err
+	}
+	if err := r.store.ApproveFrozen(ctx, ds, id); err != nil {
+		return err
+	}
+	r.current.Store(ds)
+	return nil
+}
+
+// Reject undoes a pending change in Linear, marks it rejected and writes a note
+// in Linear saying why. The dashboard already counts the old value. It refuses
+// while a sync runs, so the sync cannot pick up the change halfway.
+func (r *Runner) Reject(ctx context.Context, id int64, reason string) error {
+	if !r.mu.TryLock() {
+		return ErrRunning
+	}
+	defer r.mu.Unlock()
+	c, current, err := r.pending(ctx, id)
+	if err != nil {
+		return err
+	}
+	target := linear.CommentTarget{IssueID: c.TaskID}
+	switch c.Kind {
+	case report.ChangeEstimate:
+		var old *float64
+		if old, err = report.ParseEstimate(c.Old); err == nil {
+			err = r.write.SetEstimate(ctx, c.TaskID, old)
+		}
+	case report.ChangeProject:
+		err = r.write.SetProject(ctx, c.TaskID, c.Old)
+	case report.ChangeInitiative:
+		target = linear.CommentTarget{ProjectID: c.ProjectID}
+		if c.New == report.Linked {
+			err = r.write.UnlinkProject(ctx, c.ProjectID, c.InitiativeID)
+		} else {
+			err = r.write.LinkProject(ctx, c.ProjectID, c.InitiativeID)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("%w: %s", ErrLinearWrite, sanitize(err.Error()))
+	}
+	if err := r.store.RejectFrozen(ctx, id, reason); err != nil {
+		return err
+	}
+	if err := r.write.Comment(ctx, target, current.RevertNote(c.FrozenChange, reason)); err != nil {
+		r.logger.Error("writing revert note", "change", id, "err", sanitize(err.Error()))
+		return ErrNoteFailed
+	}
+	return nil
+}
+
+// pending loads a change that is still pending, and the current copy.
+func (r *Runner) pending(ctx context.Context, id int64) (*store.FrozenChangeRow, *report.Dataset, error) {
+	current := r.Dataset()
+	if current == nil {
+		return nil, nil, errors.New("snapshot: no data yet")
+	}
+	c, err := r.store.FrozenChange(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	if c.Status != "pending" {
+		return nil, nil, store.ErrNotPending
+	}
+	return c, current, nil
 }
 
 // countable leaves out ignored tasks before anything is counted, so a full sync

@@ -134,6 +134,7 @@ export interface MenuResponse {
   unassignedTaskCount: number
   missingTimelineCount: number
   emptyProjectCount: number
+  pendingChangeCount?: number
   sync: SyncInfo
   teams?: TeamOption[]
 }
@@ -365,4 +366,25 @@ export interface TeamOption {
   id: string
   key: string
   name: string
+}
+
+export interface FrozenChange {
+  id: string
+  kind: "estimate" | "project" | "initiative"
+  status: "pending" | "approved" | "rejected" | "withdrawn"
+  what: string
+  oldValue: string
+  newValue: string
+  frozenBy: string
+  itemIdentifier?: string
+  itemTitle?: string
+  itemUrl?: string
+  detectedAt: string
+  decidedAt?: string
+  reason?: string
+}
+
+export interface FrozenChangesResponse {
+  pending?: FrozenChange[]
+  decided?: FrozenChange[]
 }

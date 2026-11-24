@@ -83,10 +83,181 @@ func migrateUp(databaseURL string) error {
 // Close releases the pool.
 func (s *Store) Close() { s.pool.Close() }
 
-// Replace swaps the stored workspace for ds in one transaction: readers see
-// either the previous copy or the new one, never a mix.
-func (s *Store) Replace(ctx context.Context, ds *report.Dataset) error {
-	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error { return replaceTx(ctx, tx, ds) })
+// FrozenUpdate is what a sync found about frozen work.
+type FrozenUpdate struct {
+	// Held lists the changes Linear made to frozen work that the sync held back.
+	Held []report.FrozenChange
+	// Rechecked reports whether the sync looked at a pending change; a pending
+	// change it looked at and did not hold again is withdrawn (Linear changed
+	// back). Nil means every pending change was looked at.
+	Rechecked func(report.FrozenChange) bool
+}
+
+// Replace swaps the stored workspace for ds and records the frozen changes in
+// one transaction: readers see either the previous copy or the new one, never a mix.
+func (s *Store) Replace(ctx context.Context, ds *report.Dataset, frozen FrozenUpdate) error {
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := replaceTx(ctx, tx, ds); err != nil {
+			return err
+		}
+		return recordFrozen(ctx, tx, frozen)
+	})
+}
+
+// ApproveFrozen stores ds, the copy with the approved change applied, and marks
+// the change approved, in one transaction. ErrNotPending: it was decided already.
+func (s *Store) ApproveFrozen(ctx context.Context, ds *report.Dataset, id int64) error {
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := decide(ctx, tx, id, "approved", ""); err != nil {
+			return err
+		}
+		return replaceTx(ctx, tx, ds)
+	})
+}
+
+// RejectFrozen marks a pending change rejected, with the reason given.
+func (s *Store) RejectFrozen(ctx context.Context, id int64, reason string) error {
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error { return decide(ctx, tx, id, "rejected", reason) })
+}
+
+// ErrNotPending is returned when deciding a change that is no longer pending.
+var ErrNotPending = errors.New("store: change is not pending")
+
+func decide(ctx context.Context, tx pgx.Tx, id int64, status, reason string) error {
+	tag, err := tx.Exec(ctx, `UPDATE frozen_changes SET status = $2, reason = $3, decided_at = now(), updated_at = now()
+	  WHERE id = $1 AND status = 'pending'`, id, status, reason)
+	if err != nil {
+		return fmt.Errorf("deciding change %d: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotPending
+	}
+	return nil
+}
+
+func recordFrozen(ctx context.Context, tx pgx.Tx, u FrozenUpdate) error {
+	pending, err := queryFrozen(ctx, tx, `WHERE status = 'pending'`)
+	if err != nil {
+		return err
+	}
+	plan := planFrozen(pending, u)
+	for _, c := range plan.update {
+		if _, err := tx.Exec(ctx, `UPDATE frozen_changes SET old_value = $2, new_value = $3, frozen_by = $4, updated_at = now()
+		  WHERE id = $1`, c.ID, c.Old, c.New, c.FrozenBy); err != nil {
+			return fmt.Errorf("updating frozen change %d: %w", c.ID, err)
+		}
+	}
+	for _, id := range plan.withdraw {
+		if _, err := tx.Exec(ctx, `UPDATE frozen_changes SET status = 'withdrawn', decided_at = now(), updated_at = now()
+		  WHERE id = $1`, id); err != nil {
+			return fmt.Errorf("withdrawing frozen change %d: %w", id, err)
+		}
+	}
+	for _, c := range plan.insert {
+		if _, err := tx.Exec(ctx, `INSERT INTO frozen_changes (change_key, kind, task_id, project_id, initiative_id,
+		  old_value, new_value, frozen_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			c.Key(), c.Kind, c.TaskID, c.ProjectID, c.InitiativeID, c.Old, c.New, c.FrozenBy); err != nil {
+			return fmt.Errorf("recording frozen change: %w", err)
+		}
+	}
+	return nil
+}
+
+// frozenPlan is how a sync's findings change the stored pending changes.
+type frozenPlan struct {
+	update   []FrozenChangeRow     // still held, with new values
+	withdraw []int64               // no longer held: Linear changed back
+	insert   []report.FrozenChange // held for the first time
+}
+
+func planFrozen(pending []FrozenChangeRow, u FrozenUpdate) frozenPlan {
+	held := map[string]report.FrozenChange{}
+	for _, c := range u.Held {
+		held[c.Key()] = c
+	}
+	var plan frozenPlan
+	for _, p := range pending {
+		c, ok := held[p.Key()]
+		switch {
+		case ok:
+			delete(held, p.Key())
+			if c != p.FrozenChange {
+				p.FrozenChange = c
+				plan.update = append(plan.update, p)
+			}
+		case u.Rechecked == nil || u.Rechecked(p.FrozenChange):
+			plan.withdraw = append(plan.withdraw, p.ID)
+		}
+	}
+	for _, c := range u.Held {
+		if _, ok := held[c.Key()]; ok {
+			plan.insert = append(plan.insert, c)
+		}
+	}
+	return plan
+}
+
+// FrozenChangeRow is a stored frozen change and its decision.
+type FrozenChangeRow struct {
+	ID int64
+	report.FrozenChange
+	Status     string // pending, approved, rejected or withdrawn
+	DetectedAt time.Time
+	DecidedAt  *time.Time
+	Reason     string
+}
+
+// FrozenChanges lists pending changes newest first, or the decided and
+// withdrawn ones most recently decided first; limit 0 means all.
+func (s *Store) FrozenChanges(ctx context.Context, pending bool, limit int) ([]FrozenChangeRow, error) {
+	where := `WHERE status = 'pending' ORDER BY detected_at DESC`
+	if !pending {
+		where = `WHERE status <> 'pending' ORDER BY decided_at DESC`
+	}
+	if limit > 0 {
+		where += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	return queryFrozen(ctx, s.pool, where)
+}
+
+// PendingCount returns how many changes wait for a decision.
+func (s *Store) PendingCount(ctx context.Context) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM frozen_changes WHERE status = 'pending'`).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("counting pending changes: %w", err)
+	}
+	return n, nil
+}
+
+// FrozenChange returns one stored change.
+func (s *Store) FrozenChange(ctx context.Context, id int64) (*FrozenChangeRow, error) {
+	rows, err := queryFrozen(ctx, s.pool, `WHERE id = $1`, id)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, pgx.ErrNoRows
+	}
+	return &rows[0], nil
+}
+
+type querier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+func queryFrozen(ctx context.Context, q querier, where string, args ...any) ([]FrozenChangeRow, error) {
+	rows, err := q.Query(ctx, `SELECT id, kind, task_id, project_id, initiative_id, old_value, new_value, frozen_by,
+	  status, detected_at, decided_at, reason FROM frozen_changes `+where, args...)
+	if err != nil {
+		return nil, fmt.Errorf("reading frozen changes: %w", err)
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (FrozenChangeRow, error) {
+		var c FrozenChangeRow
+		err := r.Scan(&c.ID, &c.Kind, &c.TaskID, &c.ProjectID, &c.InitiativeID, &c.Old, &c.New, &c.FrozenBy,
+			&c.Status, &c.DetectedAt, &c.DecidedAt, &c.Reason)
+		return c, err
+	})
 }
 
 func replaceTx(ctx context.Context, tx pgx.Tx, ds *report.Dataset) error {

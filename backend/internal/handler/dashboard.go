@@ -111,6 +111,9 @@ func (h *Dashboard) GetMenu(ctx context.Context, req *pb.GetMenuRequest) (*pb.Ge
 	}
 	res := ds.Menu(r)
 	res.Sync = h.syncInfo(ctx)
+	if n, err := h.store.PendingCount(ctx); err == nil {
+		res.PendingChangeCount = int32(n)
+	}
 	for _, t := range ds.Teams {
 		res.Teams = append(res.Teams, &pb.TeamOption{Id: t.ID, Key: t.Key, Name: t.Name})
 	}

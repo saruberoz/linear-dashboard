@@ -651,6 +651,162 @@ func (c *DashboardServiceHTTPClientImpl) ListUntaggedProjects(ctx context.Contex
 	return &out, nil
 }
 
+const OperationFreezeServiceApproveFrozenChange = "/dashboard.v1.FreezeService/ApproveFrozenChange"
+const OperationFreezeServiceListFrozenChanges = "/dashboard.v1.FreezeService/ListFrozenChanges"
+const OperationFreezeServiceRejectFrozenChange = "/dashboard.v1.FreezeService/RejectFrozenChange"
+
+type FreezeServiceHTTPServer interface {
+	// ApproveFrozenChange Replies 409 SYNC_RUNNING while a sync runs, 409 CHANGE_DECIDED when it is
+	// no longer pending, 409 CHANGE_STALE when its task or project is gone.
+	ApproveFrozenChange(context.Context, *ApproveFrozenChangeRequest) (*ApproveFrozenChangeResponse, error)
+	ListFrozenChanges(context.Context, *ListFrozenChangesRequest) (*ListFrozenChangesResponse, error)
+	// RejectFrozenChange Also 502 LINEAR_WRITE_FAILED when Linear refused the undo (nothing changed),
+	// and 502 NOTE_FAILED when the undo worked but the note could not be written.
+	RejectFrozenChange(context.Context, *RejectFrozenChangeRequest) (*RejectFrozenChangeResponse, error)
+}
+
+func RegisterFreezeServiceHTTPServer(s *http.Server, srv FreezeServiceHTTPServer) {
+	r := s.Route("/")
+	r.Handle("GET", "/v1/frozen-changes", _FreezeService_ListFrozenChanges0_HTTP_Handler(srv))
+	r.Handle("POST", "/v1/frozen-changes/{id}/approve", _FreezeService_ApproveFrozenChange0_HTTP_Handler(srv))
+	r.Handle("POST", "/v1/frozen-changes/{id}/reject", _FreezeService_RejectFrozenChange0_HTTP_Handler(srv))
+}
+
+func _FreezeService_ListFrozenChanges0_HTTP_Handler(srv FreezeServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListFrozenChangesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationFreezeServiceListFrozenChanges)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListFrozenChanges(ctx, req.(*ListFrozenChangesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListFrozenChangesResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _FreezeService_ApproveFrozenChange0_HTTP_Handler(srv FreezeServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ApproveFrozenChangeRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationFreezeServiceApproveFrozenChange)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ApproveFrozenChange(ctx, req.(*ApproveFrozenChangeRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ApproveFrozenChangeResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _FreezeService_RejectFrozenChange0_HTTP_Handler(srv FreezeServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in RejectFrozenChangeRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationFreezeServiceRejectFrozenChange)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.RejectFrozenChange(ctx, req.(*RejectFrozenChangeRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RejectFrozenChangeResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
+type FreezeServiceHTTPClient interface {
+	// ApproveFrozenChange Replies 409 SYNC_RUNNING while a sync runs, 409 CHANGE_DECIDED when it is
+	// no longer pending, 409 CHANGE_STALE when its task or project is gone.
+	ApproveFrozenChange(ctx context.Context, req *ApproveFrozenChangeRequest, opts ...http.CallOption) (rsp *ApproveFrozenChangeResponse, err error)
+	ListFrozenChanges(ctx context.Context, req *ListFrozenChangesRequest, opts ...http.CallOption) (rsp *ListFrozenChangesResponse, err error)
+	// RejectFrozenChange Also 502 LINEAR_WRITE_FAILED when Linear refused the undo (nothing changed),
+	// and 502 NOTE_FAILED when the undo worked but the note could not be written.
+	RejectFrozenChange(ctx context.Context, req *RejectFrozenChangeRequest, opts ...http.CallOption) (rsp *RejectFrozenChangeResponse, err error)
+}
+
+type FreezeServiceHTTPClientImpl struct {
+	cc *http.Client
+}
+
+func NewFreezeServiceHTTPClient(client *http.Client) FreezeServiceHTTPClient {
+	return &FreezeServiceHTTPClientImpl{client}
+}
+
+// ApproveFrozenChange Replies 409 SYNC_RUNNING while a sync runs, 409 CHANGE_DECIDED when it is
+// no longer pending, 409 CHANGE_STALE when its task or project is gone.
+func (c *FreezeServiceHTTPClientImpl) ApproveFrozenChange(ctx context.Context, in *ApproveFrozenChangeRequest, opts ...http.CallOption) (*ApproveFrozenChangeResponse, error) {
+	var out ApproveFrozenChangeResponse
+	pattern := "/v1/frozen-changes/{id}/approve"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationFreezeServiceApproveFrozenChange),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *FreezeServiceHTTPClientImpl) ListFrozenChanges(ctx context.Context, in *ListFrozenChangesRequest, opts ...http.CallOption) (*ListFrozenChangesResponse, error) {
+	var out ListFrozenChangesResponse
+	pattern := "/v1/frozen-changes"
+	path := http.BuildPath(pattern, in, http.WithQueryParams())
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.Operation(OperationFreezeServiceListFrozenChanges),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RejectFrozenChange Also 502 LINEAR_WRITE_FAILED when Linear refused the undo (nothing changed),
+// and 502 NOTE_FAILED when the undo worked but the note could not be written.
+func (c *FreezeServiceHTTPClientImpl) RejectFrozenChange(ctx context.Context, in *RejectFrozenChangeRequest, opts ...http.CallOption) (*RejectFrozenChangeResponse, error) {
+	var out RejectFrozenChangeResponse
+	pattern := "/v1/frozen-changes/{id}/reject"
+	path := http.BuildPath(pattern, in)
+	opts = append([]http.CallOption{
+		http.Accept("application/protojson"),
+		http.ContentType("application/protojson"),
+		http.Operation(OperationFreezeServiceRejectFrozenChange),
+		http.PathTemplate(pattern),
+	}, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 const OperationSyncServiceGetSyncStatus = "/dashboard.v1.SyncService/GetSyncStatus"
 const OperationSyncServiceStartSync = "/dashboard.v1.SyncService/StartSync"
 

@@ -210,6 +210,32 @@ Where this section and the rest of the document disagree, this section wins.
     deleted task usually stays until the next full sync (on 24 Nov 2026, 44
     tasks deleted in a day). Ignored tasks are dropped before counting in both
     kinds of sync, so the task trees they walk are the same.
+*   **Frozen work:** *(added 2026-11-24, PAR-978 and PAR-979)* completed work
+    must not change afterwards. Linear cannot be locked, so every sync compares
+    what it fetched with the stored copy (`report.Freeze`) and holds back these
+    changes, keeping the stored value:
+    1.  the estimate of a task that was completed;
+    2.  tasks moved into or out of a completed project, created in it, or
+        re-estimated while in it (a task created in a completed project is
+        kept out of the project until approved);
+    3.  projects linked to or unlinked from a completed `[W]`/`[WS]`
+        initiative (hidden initiatives do not count, so they are not frozen).
+
+    Completion is read from the stored copy, so work completed in a sync is
+    frozen from the next one. Each held change is a row in `frozen_changes`,
+    listed on the **Pending changes** bookkeeping page. Anyone with the app can
+    decide it:
+    *   **Approve:** the stored copy takes the new value and is recounted
+        (`Dataset.WithChange`), in one transaction with the decision.
+    *   **Reject:** the dashboard undoes the change in Linear (estimate or
+        project set back, initiative link removed or restored), then writes a
+        comment on the task, or on the project for an initiative link, saying
+        what was undone and why, with the rejecter's reason if given. Linear
+        writes use the dashboard's API key, so they appear as its owner.
+
+    A pending change whose value Linear changes back on its own is withdrawn.
+    A Refresh only rechecks pending task changes whose task it fetched again;
+    a full sync rechecks all of them. Decisions are refused while a sync runs.
 *   **Date rule:** the range rule exists **only in Go** (`report.InRange`). SQL
     filters by scope only, and there are no date indexes.
 *   **Tasks fetched:** archived tasks are included and **trashed (deleted)
@@ -894,7 +920,8 @@ and from decisions made while reviewing the mockup.
 *   **Sign-in with Linear.** Restrict viewers to members of the PARKEE
     workspace.
 *   **Frozen months.** Store a snapshot of each reported month, so later
-    re-estimates don't change it.
+    re-estimates don't change it. Frozen work (completed tasks, projects and
+    initiatives, see the sync section) covers much of this since 2026-11-24.
 *   **Coverage figure.** Show "tagged work is X% of all estimated effort" on the
     overview. The author decided against this for now, on 2026-11-17.
 

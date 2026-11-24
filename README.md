@@ -157,3 +157,26 @@ The housekeeping pages in the left menu list what to fix in Linear:
     initiative. Draft initiatives (a word from `IgnoredInitiativeKeywords` in the name)
     don't count.
 *   **Initiatives without projects:** initiatives with no linked project.
+
+## Frozen work
+
+Completed work is frozen, so reported effort does not change afterwards.
+Linear cannot be locked, so after every sync the dashboard holds back changes
+to frozen work and keeps counting the old value:
+
+| Completed | Held back |
+|---|---|
+| task | a change to its estimate |
+| project | a task moved into or out of it, created in it, or re-estimated while in it |
+| `[W]`/`[WS]` initiative | a project linked to or unlinked from it |
+
+Held changes are listed under **Pending changes** in the left menu. Anyone
+with the app can decide them:
+
+*   **Approve:** the dashboard takes the new value.
+*   **Reject:** the dashboard sets Linear back to the old value and writes a
+    comment there saying what was undone and why, with your reason if you give
+    one. It does this with the `LINEAR_API_KEY`, so it appears as that key's
+    owner: use a service account in production.
+
+If Linear changes back on its own, the pending change is withdrawn.

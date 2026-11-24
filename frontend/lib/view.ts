@@ -16,6 +16,7 @@ export type View =
   | { kind: "unassigned"; data: T.UnassignedTasksResponse }
   | { kind: "notimeline"; data: T.MissingTimelineResponse }
   | { kind: "notasks"; data: T.ProjectListResponse }
+  | { kind: "frozen"; data: T.FrozenChangesResponse }
   | { kind: "dashboard"; id: string; data: T.SavedDashboard }
   | { kind: "error"; error: T.ApiError }
 

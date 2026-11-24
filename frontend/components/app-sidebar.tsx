@@ -13,6 +13,7 @@ import {
   FolderXIcon,
   LayersIcon,
   ListXIcon,
+  LockIcon,
   SearchIcon,
   TagIcon,
   TargetIcon,
@@ -101,6 +102,13 @@ export function AppSidebar({
     })
 
   const housekeeping = [
+    {
+      scope: "frozen",
+      label: "Pending changes",
+      icon: LockIcon,
+      count: menu?.pendingChangeCount ?? 0,
+      warn: true,
+    },
     {
       scope: "missing",
       label: "Missing estimates",

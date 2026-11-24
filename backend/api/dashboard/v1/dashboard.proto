@@ -67,6 +67,31 @@ service DashboardService {
   }
 }
 
+// Completed work is frozen: a change Linear makes to it is held as a pending
+// change until someone approves it (the dashboard takes the new value) or
+// rejects it (the dashboard undoes it in Linear and leaves a note there).
+service FreezeService {
+  rpc ListFrozenChanges(ListFrozenChangesRequest) returns (ListFrozenChangesResponse) {
+    option (google.api.http) = {get: "/v1/frozen-changes"};
+  }
+  // Replies 409 SYNC_RUNNING while a sync runs, 409 CHANGE_DECIDED when it is
+  // no longer pending, 409 CHANGE_STALE when its task or project is gone.
+  rpc ApproveFrozenChange(ApproveFrozenChangeRequest) returns (ApproveFrozenChangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/frozen-changes/{id}/approve"
+      body: "*"
+    };
+  }
+  // Also 502 LINEAR_WRITE_FAILED when Linear refused the undo (nothing changed),
+  // and 502 NOTE_FAILED when the undo worked but the note could not be written.
+  rpc RejectFrozenChange(RejectFrozenChangeRequest) returns (RejectFrozenChangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/frozen-changes/{id}/reject"
+      body: "*"
+    };
+  }
+}
+
 service SyncService {
   // StartSync replies 409 SYNC_RUNNING or 429 SYNC_COOLDOWN before any work starts.
   rpc StartSync(StartSyncRequest) returns (StartSyncResponse) {
@@ -231,6 +256,7 @@ message GetMenuResponse {
   int32 empty_project_count = 10; // canceled projects left out
   int32 unassigned_task_count = 11; // unassigned tasks with effort in range
   repeated TeamOption teams = 12; // every team, by name, for the team filter
+  int32 pending_change_count = 13; // frozen changes waiting for approval
 }
 
 message TeamOption {
@@ -494,4 +520,48 @@ message GetSyncStatusRequest {}
 
 message GetSyncStatusResponse {
   SyncInfo sync = 1;
+}
+
+// ---------- frozen changes ----------
+
+message FrozenChange {
+  int64 id = 1;
+  string kind = 2; // "estimate" | "project" | "initiative"
+  string status = 3; // "pending" | "approved" | "rejected" | "withdrawn"
+  string what = 4; // e.g. "Estimate", "Project", "Initiative [W] Payments"
+  string old_value = 5; // e.g. "3 pts", "no project", "linked"
+  string new_value = 6;
+  string frozen_by = 7; // e.g. "the task was completed"
+  // The task for estimate and project changes, the project for initiative changes.
+  string item_identifier = 8; // task identifier, "" for a project
+  string item_title = 9;
+  string item_url = 10;
+  string detected_at = 11; // RFC 3339
+  string decided_at = 12; // RFC 3339, "" while pending
+  string reason = 13; // the rejecter's reason
+}
+
+message ListFrozenChangesRequest {}
+
+message ListFrozenChangesResponse {
+  repeated FrozenChange pending = 1; // newest first
+  repeated FrozenChange decided = 2; // the 50 most recently decided or withdrawn
+}
+
+message ApproveFrozenChangeRequest {
+  int64 id = 1;
+}
+
+message RejectFrozenChangeRequest {
+  int64 id = 1;
+  string reason = 2; // optional; added to the note in Linear
+}
+
+// Both decisions reply with the lists after the decision.
+message ApproveFrozenChangeResponse {
+  ListFrozenChangesResponse changes = 1;
+}
+
+message RejectFrozenChangeResponse {
+  ListFrozenChangesResponse changes = 1;
 }
