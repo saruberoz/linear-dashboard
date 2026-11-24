@@ -38,6 +38,14 @@ export interface ContributorRow {
   count: number
   cells: Record<string, ContributorCell>
   missing: number
+  teams?: ContributorTeam[]
+}
+
+export interface ContributorTeam {
+  key: string
+  name: string
+  pts: number
+  count: number
 }
 
 export interface ContributorTable {

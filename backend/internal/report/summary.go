@@ -157,6 +157,18 @@ func assigneeKey(t *Task) string {
 	return t.AssigneeID
 }
 
+// teamOf returns the row's entry for a team, adding it when new.
+func teamOf(row *pb.ContributorRow, t Team) *pb.ContributorTeam {
+	for _, ct := range row.Teams {
+		if ct.Key == t.Key {
+			return ct
+		}
+	}
+	ct := &pb.ContributorTeam{Key: t.Key, Name: t.Name}
+	row.Teams = append(row.Teams, ct)
+	return ct
+}
+
 // contributors builds one contributor table: assignee rows by the dimension's columns.
 func (d *Dataset) contributors(ws []weighted, dim string) *pb.ContributorTable {
 	tbl := &pb.ContributorTable{Dim: dim, Columns: columnsOf(dim)}
@@ -180,6 +192,9 @@ func (d *Dataset) contributors(ws []weighted, dim string) *pb.ContributorTable {
 		e := x.pts()
 		row.Total += e
 		row.Count++
+		team := teamOf(row, d.Teams[t.TeamID])
+		team.Pts += e
+		team.Count++
 		tbl.Total += e
 		if t.MissingEstimate {
 			row.Missing++
@@ -203,6 +218,16 @@ func (d *Dataset) contributors(ws []weighted, dim string) *pb.ContributorTable {
 		c.Pct = pct(c.Pts, tbl.Total)
 	}
 	for _, r := range rows {
+		sort.Slice(r.Teams, func(i, j int) bool {
+			a, b := r.Teams[i], r.Teams[j]
+			if a.Pts != b.Pts {
+				return a.Pts > b.Pts
+			}
+			if a.Count != b.Count {
+				return a.Count > b.Count
+			}
+			return a.Key < b.Key
+		})
 		tbl.Rows = append(tbl.Rows, r)
 	}
 	sort.Slice(tbl.Rows, func(i, j int) bool {

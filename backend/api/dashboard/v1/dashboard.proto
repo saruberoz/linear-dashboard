@@ -142,6 +142,14 @@ message ContributorRow {
   int32 count = 4;
   map<string, ContributorCell> cells = 5; // keyed by column key
   int32 missing = 6;
+  repeated ContributorTeam teams = 7; // teams of the person's tasks here, most effort first
+}
+
+message ContributorTeam {
+  string key = 1;
+  string name = 2;
+  double pts = 3;
+  int32 count = 4;
 }
 
 message ContributorTable {

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardAction,
@@ -31,7 +32,11 @@ import { PriorityIcon, SegmentDot, StatusIcon } from "@/components/linear-icons"
 import { TaskList } from "@/components/task-list"
 import { clientFetch } from "@/lib/api"
 import { DIMENSIONS, SEG, fmt } from "@/lib/constants"
-import type { ContributorTable, TasksResponse } from "@/lib/types"
+import type {
+  ContributorTable,
+  ContributorTeam,
+  TasksResponse,
+} from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { useDash } from "@/hooks/use-dash"
 
@@ -49,6 +54,28 @@ function ColumnIcon({ dim, k }: { dim: string; k: string }) {
   if (dim === "priority") return <PriorityIcon priority={Number(k)} />
   if (dim === "status") return <StatusIcon status={k} />
   return <SegmentDot color={SEG[k]?.color ?? "var(--muted-foreground)"} />
+}
+
+/** A person's teams here, most effort first: two shown, the rest counted. */
+function Teams({ teams }: { teams: ContributorTeam[] }) {
+  const shown = teams.slice(0, 2)
+  const rest = teams.slice(2)
+  const describe = (t: ContributorTeam) =>
+    `${t.name}: ${fmt(t.pts)} pts · ${t.count} task${t.count === 1 ? "" : "s"}`
+  return (
+    <span className="flex items-center gap-1">
+      {shown.map((t) => (
+        <Badge key={t.key} variant="outline" title={describe(t)}>
+          {t.key}
+        </Badge>
+      ))}
+      {rest.length > 0 && (
+        <Badge variant="secondary" title={rest.map(describe).join("\n")}>
+          +{rest.length}
+        </Badge>
+      )}
+    </span>
+  )
 }
 
 /** Linear Insights-style pivot: assignees × a chosen dimension. Every number opens the tasks behind it. */
@@ -166,6 +193,7 @@ export function ContributorsPivot({
           <TableHeader>
             <TableRow>
               <TableHead className="pl-4">Assignee</TableHead>
+              <TableHead>Team</TableHead>
               <TableHead className="border-l text-right">
                 Total effort
               </TableHead>
@@ -203,6 +231,9 @@ export function ContributorsPivot({
                       {r.assignee}
                     </span>
                   </span>
+                </TableCell>
+                <TableCell>
+                  <Teams teams={r.teams ?? []} />
                 </TableCell>
                 {cell(
                   r.total,
@@ -253,6 +284,7 @@ export function ContributorsPivot({
             ))}
             <TableRow className="bg-muted/40 font-medium hover:bg-muted/40">
               <TableCell className="pl-4">Total</TableCell>
+              <TableCell />
               <TableCell className="border-l px-3 text-right tabular-nums">
                 {fmt(table.total)}
               </TableCell>
