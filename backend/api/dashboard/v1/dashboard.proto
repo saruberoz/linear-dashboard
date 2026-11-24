@@ -480,7 +480,11 @@ message ListProjectsWithoutTasksResponse {
 
 // ---------- sync ----------
 
-message StartSyncRequest {}
+message StartSyncRequest {
+  // true: fetch only tasks changed since the last successful sync (Refresh);
+  // false: copy the whole workspace (Resync).
+  bool changed_only = 1;
+}
 
 message StartSyncResponse {
   SyncInfo sync = 1;

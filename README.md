@@ -18,8 +18,18 @@ open http://localhost:3300
 The first start copies the whole Linear workspace, which takes about 4 minutes
 for about 32,000 tasks. The page shows "first sync is still running" until it
 finishes. After that, a sync runs every night at 01:00 and every weekday at
-17:00 Asia/Jakarta (`SYNC_CRON`, several schedules separated by `;`). The
-**Refresh** button runs one on demand, at most once every 15 minutes.
+17:00 Asia/Jakarta (`SYNC_CRON`, several schedules separated by `;`). Two
+buttons in the header sync on demand:
+
+| Button | What it copies | Time | At most once every |
+|---|---|---|---|
+| **Refresh** | tasks changed in Linear since the last successful sync, plus teams, users, labels, initiatives and projects | seconds | 2 minutes (`REFRESH_COOLDOWN`) |
+| **Resync** | the whole workspace | about 4 minutes | 15 minutes (`SYNC_COOLDOWN`) |
+
+Linear does not mark a task as changed when it is deleted, so Refresh misses
+most deletions: a deleted task stays until the next Resync or scheduled sync,
+which are always full. Ignored tasks are left out before anything is counted, in
+both kinds of sync.
 
 | Service | What it does |
 |---|---|

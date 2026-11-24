@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   CalendarIcon,
+  DatabaseIcon,
   RefreshCwIcon,
   TriangleAlertIcon,
   UsersIcon,
@@ -47,6 +48,15 @@ import { DEFAULT_TEAMS } from "@/lib/constants"
 import { currentMonth, jakartaWeek, type Range } from "@/lib/view"
 import { useDash } from "@/hooks/use-dash"
 import { cn } from "@/lib/utils"
+
+/** Why a sync could not start, in words: a cooldown names when to try again. */
+function syncRefusal(e: unknown): string {
+  if (!(e instanceof BackendError)) return "Could not start a sync"
+  const at = e.body.message.match(/allowed at (\S+)$/)?.[1]
+  if (e.body.reason === "SYNC_COOLDOWN" && at) return `Try again at ${wib(at)}`
+  if (e.body.reason === "SYNC_RUNNING") return "A sync is already running"
+  return e.body.message
+}
 
 const wib = (iso: string) =>
   iso
@@ -262,7 +272,7 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
     return () => clearInterval(id)
   }, [sync?.running, router, initial])
 
-  const refresh = async () => {
+  const startSync = async (changedOnly: boolean) => {
     setNotice("")
     try {
       setSync(
@@ -270,14 +280,12 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
           await clientFetch<{ sync: SyncInfo }>(
             "sync",
             {},
-            { method: "POST", body: "{}" }
+            { method: "POST", body: JSON.stringify({ changedOnly }) }
           )
         ).sync
       )
     } catch (e) {
-      setNotice(
-        e instanceof BackendError ? e.body.message : "Could not start a sync"
-      )
+      setNotice(syncRefusal(e))
     }
   }
 
@@ -328,7 +336,7 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={refresh}
+              onClick={() => startSync(true)}
               disabled={!!sync?.running}
             />
           }
@@ -340,8 +348,28 @@ function SyncStatus({ initial }: { initial: SyncInfo | null }) {
           )}
           Refresh
         </TooltipTrigger>
-        <TooltipContent>
-          Copy the latest data from Linear now (at most once every 15 minutes)
+        <TooltipContent className="max-w-xs">
+          Copy only the tasks changed in Linear since the last sync. Takes
+          seconds. Tasks deleted in Linear stay until the next Resync.
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => startSync(false)}
+              disabled={!!sync?.running}
+            />
+          }
+        >
+          <DatabaseIcon data-icon="inline-start" />
+          Resync
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          Copy the whole Linear workspace again. Takes about 4 minutes, at most
+          once every 15 minutes.
         </TooltipContent>
       </Tooltip>
     </div>

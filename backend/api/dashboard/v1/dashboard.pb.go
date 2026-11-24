@@ -3678,7 +3678,10 @@ func (x *ListProjectsWithoutTasksResponse) GetProjects() []*ProjectRow {
 }
 
 type StartSyncRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// true: fetch only tasks changed since the last successful sync (Refresh);
+	// false: copy the whole workspace (Resync).
+	ChangedOnly   bool `protobuf:"varint,1,opt,name=changed_only,json=changedOnly,proto3" json:"changed_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3711,6 +3714,13 @@ func (x *StartSyncRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use StartSyncRequest.ProtoReflect.Descriptor instead.
 func (*StartSyncRequest) Descriptor() ([]byte, []int) {
 	return file_dashboard_v1_dashboard_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *StartSyncRequest) GetChangedOnly() bool {
+	if x != nil {
+		return x.ChangedOnly
+	}
+	return false
 }
 
 type StartSyncResponse struct {
@@ -4152,8 +4162,9 @@ const file_dashboard_v1_dashboard_proto_rawDesc = "" +
 	"\x02to\x18\x02 \x01(\tR\x02to\x12\x14\n" +
 	"\x05teams\x18\x03 \x03(\tR\x05teams\"X\n" +
 	" ListProjectsWithoutTasksResponse\x124\n" +
-	"\bprojects\x18\x01 \x03(\v2\x18.dashboard.v1.ProjectRowR\bprojects\"\x12\n" +
-	"\x10StartSyncRequest\"?\n" +
+	"\bprojects\x18\x01 \x03(\v2\x18.dashboard.v1.ProjectRowR\bprojects\"5\n" +
+	"\x10StartSyncRequest\x12!\n" +
+	"\fchanged_only\x18\x01 \x01(\bR\vchangedOnly\"?\n" +
 	"\x11StartSyncResponse\x12*\n" +
 	"\x04sync\x18\x01 \x01(\v2\x16.dashboard.v1.SyncInfoR\x04sync\"\x16\n" +
 	"\x14GetSyncStatusRequest\"C\n" +

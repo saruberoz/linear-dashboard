@@ -134,10 +134,19 @@ type connection[T any] struct {
 // paginate runs a query whose single root field is a connection taking $after,
 // calling fn for every page and progress, when set, with the page's record count.
 func paginate[T any](ctx context.Context, c *Client, query string, progress func(int), fn func([]T)) error {
+	return paginateVars(ctx, c, query, nil, progress, fn)
+}
+
+// paginateVars is paginate with extra query variables besides the cursor.
+func paginateVars[T any](ctx context.Context, c *Client, query string, vars map[string]any, progress func(int), fn func([]T)) error {
 	var after any
 	for {
 		var data map[string]connection[T]
-		if err := c.do(ctx, query, map[string]any{"after": after}, &data); err != nil {
+		page := map[string]any{"after": after}
+		for k, v := range vars {
+			page[k] = v
+		}
+		if err := c.do(ctx, query, page, &data); err != nil {
 			return err
 		}
 		if len(data) != 1 {

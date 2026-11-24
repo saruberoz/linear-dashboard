@@ -1,5 +1,6 @@
-// Package snapshot copies the Linear workspace into the store: fetch everything,
-// derive the counting fields, then replace the stored copy in one transaction.
+// Package snapshot copies the Linear workspace into the store: fetch it (all
+// tasks, or only tasks changed since the last sync), derive the counting fields,
+// then replace the stored copy in one transaction.
 package snapshot
 
 import (
@@ -7,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,33 +19,39 @@ import (
 	"linear-dashboard/backend/internal/store"
 )
 
-// Sync triggers.
+// Sync triggers. A refresh fetches only tasks changed since the last
+// successful sync; every other trigger fetches the whole workspace.
 const (
 	TriggerStartup  = "startup"
 	TriggerSchedule = "schedule"
 	TriggerManual   = "manual"
+	TriggerRefresh  = "refresh"
 )
+
+// refreshOverlap is how far before the last successful sync a refresh looks,
+// so tasks edited while that sync was fetching are not missed.
+const refreshOverlap = 5 * time.Minute
 
 // Errors returned by Start before any work begins.
 var (
 	ErrRunning  = errors.New("snapshot: a sync is already running")
-	ErrCooldown = errors.New("snapshot: manual sync cooldown")
+	ErrCooldown = errors.New("snapshot: sync cooldown")
 )
 
 // Fetcher downloads the workspace.
 type Fetcher interface {
-	FetchWorkspace(ctx context.Context, progress func(int)) (*linear.Workspace, error)
+	FetchWorkspace(ctx context.Context, since time.Time, progress func(int)) (*linear.Workspace, error)
 }
 
 // Runner runs one sync at a time. Only one backend process runs syncs, so an
 // in-process lock is enough; abandoned "running" rows are cleared at startup.
 type Runner struct {
-	fetch    Fetcher
-	store    *store.Store
-	cooldown time.Duration
-	timeout  time.Duration
-	logger   *slog.Logger
-	current  atomic.Pointer[report.Dataset]
+	fetch     Fetcher
+	store     *store.Store
+	cooldowns map[string]time.Duration // per trigger; triggers not listed have none
+	timeout   time.Duration
+	logger    *slog.Logger
+	current   atomic.Pointer[report.Dataset]
 
 	mu      sync.Mutex // held for the whole run
 	running atomic.Bool
@@ -58,9 +66,10 @@ type Runner struct {
 // savingPercent is shown once the download is done; writing has no finer progress.
 const savingPercent = 95
 
-// NewRunner returns a runner. cooldown applies to manual syncs only.
-func NewRunner(f Fetcher, s *store.Store, cooldown time.Duration, logger *slog.Logger) *Runner {
-	return &Runner{fetch: f, store: s, cooldown: cooldown, timeout: 30 * time.Minute, logger: logger}
+// NewRunner returns a runner. cooldowns holds the minimum time between two
+// starts of the same trigger, for the triggers people press (manual, refresh).
+func NewRunner(f Fetcher, s *store.Store, cooldowns map[string]time.Duration, logger *slog.Logger) *Runner {
+	return &Runner{fetch: f, store: s, cooldowns: cooldowns, timeout: 30 * time.Minute, logger: logger}
 }
 
 // Dataset returns the current workspace copy, or nil before the first successful sync.
@@ -96,22 +105,22 @@ func size(d *report.Dataset) int64 {
 	return int64(len(d.Teams) + len(d.Users) + len(d.Labels) + len(d.Initiatives) + len(d.Projects) + len(d.Tasks))
 }
 
-// Start checks the lock and, for manual syncs, the cooldown, records the run and
-// returns its id; the sync itself continues in the background under base, which
-// is canceled only when the backend shuts down. Failed runs count toward the cooldown.
+// Start checks the lock and the trigger's cooldown, records the run and returns
+// its id; the sync itself continues in the background under base, which is
+// canceled only when the backend shuts down. Failed runs count toward the cooldown.
 func (r *Runner) Start(ctx, base context.Context, trigger string) (int64, error) {
 	if !r.mu.TryLock() {
 		return 0, ErrRunning
 	}
-	if trigger == TriggerManual {
-		last, ok, err := r.store.LastManualStart(ctx)
+	if cooldown := r.cooldowns[trigger]; cooldown > 0 {
+		last, ok, err := r.store.LastStart(ctx, trigger)
 		if err != nil {
 			r.mu.Unlock()
 			return 0, err
 		}
-		if ok && time.Since(last) < r.cooldown {
+		if ok && time.Since(last) < cooldown {
 			r.mu.Unlock()
-			return 0, fmt.Errorf("%w: next manual sync allowed at %s", ErrCooldown, last.Add(r.cooldown).Format(time.RFC3339))
+			return 0, fmt.Errorf("%w: next %s allowed at %s", ErrCooldown, trigger, last.Add(cooldown).Format(time.RFC3339))
 		}
 	}
 	id, err := r.store.StartRun(ctx, trigger)
@@ -121,6 +130,9 @@ func (r *Runner) Start(ctx, base context.Context, trigger string) (int64, error)
 	}
 	r.fetched.Store(0)
 	r.expected.Store(size(r.Dataset()))
+	if trigger == TriggerRefresh && r.Dataset() != nil {
+		r.expected.Store(size(r.Dataset()) - int64(len(r.Dataset().Tasks)))
+	}
 	r.saving.Store(false)
 	r.running.Store(true)
 	r.wg.Add(1)
@@ -140,7 +152,7 @@ func (r *Runner) execute(base context.Context, id int64, trigger string) {
 	ctx, cancel := context.WithTimeout(base, r.timeout)
 	defer cancel()
 	started := time.Now()
-	stats, err := r.run(ctx)
+	stats, err := r.run(ctx, trigger)
 	// Record the outcome even if base was canceled by shutdown.
 	finishCtx, cancelFinish := context.WithTimeout(context.WithoutCancel(base), 10*time.Second)
 	defer cancelFinish()
@@ -158,11 +170,29 @@ func (r *Runner) execute(base context.Context, id int64, trigger string) {
 	r.logger.Info("sync succeeded", "run", id, "trigger", trigger, "after", time.Since(started).Round(time.Second).String(), "stats", stats)
 }
 
-// run fetches, derives and writes. Nothing is written unless the whole fetch succeeded.
-func (r *Runner) run(ctx context.Context) (map[string]int, error) {
-	ws, err := r.fetch.FetchWorkspace(ctx, func(n int) { r.fetched.Add(int64(n)) })
+// run fetches, derives and writes. Nothing is written unless the whole fetch
+// succeeded. A refresh with a stored copy fetches only the tasks changed since
+// the last successful sync started and merges them into that copy.
+func (r *Runner) run(ctx context.Context, trigger string) (map[string]int, error) {
+	current := r.Dataset()
+	var since time.Time
+	if trigger == TriggerRefresh && current != nil {
+		last, ok, err := r.store.LastSuccessStart(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			since = last.Add(-refreshOverlap)
+		}
+	}
+	ws, err := r.fetch.FetchWorkspace(ctx, since, func(n int) { r.fetched.Add(int64(n)) })
 	if err != nil {
 		return nil, err
+	}
+	ws.Tasks = countable(ws.Tasks)
+	changed := len(ws.Tasks)
+	if !since.IsZero() {
+		ws.Tasks = mergeTasks(current.Tasks, ws.Tasks, ws.TrashedIDs)
 	}
 	r.saving.Store(true)
 	teams := map[string]report.Team{}
@@ -178,13 +208,42 @@ func (r *Runner) run(ctx context.Context) (map[string]int, error) {
 	stats := map[string]int{
 		"teams": len(ws.Teams), "users": len(ws.Users), "labels": len(ws.Labels),
 		"initiatives": len(ws.Initiatives), "projects": len(ws.Projects), "tasks": len(ws.Tasks),
-		"trashed_skipped": ws.Trashed,
+		"trashed_skipped": len(ws.TrashedIDs),
+	}
+	if !since.IsZero() {
+		stats["changed_tasks"] = changed
 	}
 	if err := r.store.Replace(ctx, ds); err != nil {
 		return stats, err
 	}
 	r.current.Store(ds)
 	return stats, nil
+}
+
+// countable leaves out ignored tasks before anything is counted, so a full sync
+// and a refresh (whose stored copy never holds them) walk the same task trees.
+func countable(tasks []report.Task) []report.Task {
+	return slices.DeleteFunc(tasks, func(t report.Task) bool { return report.IsIgnoredTask(t.Title) })
+}
+
+// mergeTasks returns the stored tasks with the changed ones replacing their
+// stored version, new ones added, and trashed ones removed. Stored tasks are
+// copied, so the live dataset is left untouched when the result is derived.
+func mergeTasks(stored, changed []report.Task, trashedIDs []string) []report.Task {
+	drop := make(map[string]bool, len(changed)+len(trashedIDs))
+	for _, t := range changed {
+		drop[t.ID] = true
+	}
+	for _, id := range trashedIDs {
+		drop[id] = true
+	}
+	out := make([]report.Task, 0, len(stored)+len(changed))
+	for _, t := range stored {
+		if !drop[t.ID] {
+			out = append(out, t)
+		}
+	}
+	return append(out, changed...)
 }
 
 // sanitize keeps sync errors safe to show in the browser: no API keys.

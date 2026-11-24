@@ -197,8 +197,19 @@ Where this section and the rest of the document disagree, this section wins.
     marks any leftover `running` row as `failed`.
 *   **Starting a sync:** `POST /v1/sync` checks the lock and the cooldown
     **before it replies**: 409 if a sync is running, 429 during the cooldown.
-    The run itself goes on in the background with a 30-minute timeout. The
-    cooldown applies only to manual syncs, and failed runs count toward it.
+    The run itself goes on in the background with a 30-minute timeout. Each
+    button has its own cooldown: 15 minutes for Resync (a full copy) and 2
+    minutes for Refresh (changed tasks only). Scheduled syncs have none, and
+    failed runs count toward it. *(Refresh added 2026-11-23.)*
+*   **Refresh:** fetches teams, users, labels, initiatives and projects in
+    full, and only the tasks Linear updated since 5 minutes before the last
+    successful sync started. The changed tasks replace their stored version,
+    new ones are added, and trashed ones it sees are removed; then every derived
+    field is recomputed over the whole set and the copy is replaced as in a full
+    sync. Deleting a task does not change its `updatedAt` in Linear, so a
+    deleted task usually stays until the next full sync (on 24 Nov 2026, 44
+    tasks deleted in a day). Ignored tasks are dropped before counting in both
+    kinds of sync, so the task trees they walk are the same.
 *   **Date rule:** the range rule exists **only in Go** (`report.InRange`). SQL
     filters by scope only, and there are no date indexes.
 *   **Tasks fetched:** archived tasks are included and **trashed (deleted)
@@ -360,7 +371,8 @@ because a reader who doesn't know about them will draw the wrong conclusion.
         during that range.
     *   The range uses Asia/Jakarta time and defaults to 1–30 November 2026.
 9.  **Freshness.** Data is synced from Linear every night at 01:00 and every
-    weekday at 17:00. A Refresh button starts a sync on demand. The header on
+    weekday at 17:00. A Refresh button copies the tasks changed since the last
+    sync, and a Resync button copies everything again. The header on
     every view shows the **last sync time and its result** (author's request)
     in a black pill, green when the data is from today and red otherwise:
     *   after a success, "Synced 17 Nov 2026, 01:07 WIB";
@@ -864,8 +876,10 @@ and from decisions made while reviewing the mockup.
         logged, never returned by the API, and never in the browser.
     *   Rotate the key that was pasted into chat before first deployment.
 *   **Load on Linear.** One full sync makes about 360 requests, within the limit
-    of 2,500 per hour. The 15-minute cooldown on Refresh caps manual syncs at 4
-    per hour, so the worst case stays under the limit.
+    of 2,500 per hour. A Refresh makes about 20 to 30. The 15-minute cooldown
+    on Resync caps full manual syncs at 4 per hour (about 1,440 requests), and
+    the 2-minute cooldown on Refresh caps refreshes at 30 per hour (about 900),
+    so the worst case stays under the limit.
 *   **Speed.** Each view is computed from at most a few thousand rows, with a
     target under 200 ms per endpoint. A full sync is expected to take 5–10
     minutes.

@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -127,15 +129,46 @@ func TestTrashedTasksAreSkipped(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	var fetched int
-	ws, err := newTestClient(srv).FetchWorkspace(context.Background(), func(n int) { fetched += n })
+	var fetched atomic.Int64
+	ws, err := newTestClient(srv).FetchWorkspace(context.Background(), time.Time{}, func(n int) { fetched.Add(int64(n)) })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ws.Tasks) != 1 || ws.Tasks[0].ID != "keep" || ws.Trashed != 1 {
-		t.Errorf("tasks=%v trashed=%d, want only 'keep' and 1 trashed", ws.Tasks, ws.Trashed)
+	if len(ws.Tasks) != 1 || ws.Tasks[0].ID != "keep" || !slices.Equal(ws.TrashedIDs, []string{"gone"}) {
+		t.Errorf("tasks=%v trashed=%v, want only 'keep' and 'gone' trashed", ws.Tasks, ws.TrashedIDs)
 	}
-	if fetched != 2 {
-		t.Errorf("progress reported %d records, want 2 (trashed ones are downloaded too)", fetched)
+	if n := fetched.Load(); n != 2 {
+		t.Errorf("progress reported %d records, want 2 (trashed ones are downloaded too)", n)
+	}
+}
+
+func TestChangedSinceAsksOnlyForUpdatedTasks(t *testing.T) {
+	var issueQueries []gqlRequest
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var req gqlRequest
+		_ = json.Unmarshal(body, &req)
+		field := strings.Fields(strings.SplitN(req.Query, "{", 3)[1])[0]
+		field = strings.SplitN(field, "(", 2)[0]
+		if field == "issues" {
+			mu.Lock()
+			issueQueries = append(issueQueries, req)
+			mu.Unlock()
+		}
+		_, _ = io.WriteString(w, `{"data":{"`+field+`":{"pageInfo":{"hasNextPage":false},"nodes":[]}}}`)
+	}))
+	defer srv.Close()
+
+	since := time.Date(2026, 11, 23, 14, 0, 0, 0, time.FixedZone("WIB", 7*3600))
+	if _, err := newTestClient(srv).FetchWorkspace(context.Background(), since, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(issueQueries) != 1 {
+		t.Fatalf("issue queries = %d, want 1", len(issueQueries))
+	}
+	q := issueQueries[0]
+	if !strings.Contains(q.Query, "updatedAt: { gt: $since }") || q.Variables["since"] != "2026-11-23T07:00:00Z" {
+		t.Errorf("query %q with since %v, want an updatedAt filter from 2026-11-23T07:00:00Z", q.Query, q.Variables["since"])
 	}
 }

@@ -26,6 +26,7 @@ services:
       SYNC_CRON: ${SYNC_CRON:-0 1 * * *; 0 17 * * 1-5}
       SYNC_TZ: ${SYNC_TZ:-Asia/Jakarta}
       SYNC_COOLDOWN: ${SYNC_COOLDOWN:-15m}
+      REFRESH_COOLDOWN: ${REFRESH_COOLDOWN:-2m}
     stop_grace_period: 20s
     healthcheck:
       test: ["CMD", "/server", "-healthcheck"]

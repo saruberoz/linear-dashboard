@@ -86,20 +86,22 @@ func (s *Store) Close() { s.pool.Close() }
 // Replace swaps the stored workspace for ds in one transaction: readers see
 // either the previous copy or the new one, never a mix.
 func (s *Store) Replace(ctx context.Context, ds *report.Dataset) error {
-	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		for _, table := range []string{"issue_labels", "issues", "initiative_projects", "project_labels", "project_teams",
-			"projects", "initiatives", "labels", "users", "teams"} {
-			if _, err := tx.Exec(ctx, "DELETE FROM "+table+" WHERE true"); err != nil {
-				return fmt.Errorf("clearing %s: %w", table, err)
-			}
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error { return replaceTx(ctx, tx, ds) })
+}
+
+func replaceTx(ctx context.Context, tx pgx.Tx, ds *report.Dataset) error {
+	for _, table := range []string{"issue_labels", "issues", "initiative_projects", "project_labels", "project_teams",
+		"projects", "initiatives", "labels", "users", "teams"} {
+		if _, err := tx.Exec(ctx, "DELETE FROM "+table+" WHERE true"); err != nil {
+			return fmt.Errorf("clearing %s: %w", table, err)
 		}
-		for _, c := range copies(ds) {
-			if _, err := tx.CopyFrom(ctx, pgx.Identifier{c.table}, c.columns, pgx.CopyFromRows(c.rows)); err != nil {
-				return fmt.Errorf("writing %s: %w", c.table, err)
-			}
+	}
+	for _, c := range copies(ds) {
+		if _, err := tx.CopyFrom(ctx, pgx.Identifier{c.table}, c.columns, pgx.CopyFromRows(c.rows)); err != nil {
+			return fmt.Errorf("writing %s: %w", c.table, err)
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 type tableCopy struct {
@@ -314,11 +316,11 @@ func (s *Store) FailAbandonedRuns(ctx context.Context) (int64, error) {
 	return tag.RowsAffected(), nil
 }
 
-// LastManualStart returns when the last manual sync started, if any.
-func (s *Store) LastManualStart(ctx context.Context) (time.Time, bool, error) {
+// LastStart returns when the last sync with this trigger started, if any.
+func (s *Store) LastStart(ctx context.Context, trigger string) (time.Time, bool, error) {
 	var t *time.Time
-	if err := s.pool.QueryRow(ctx, `SELECT max(started_at) FROM sync_runs WHERE trigger = 'manual'`).Scan(&t); err != nil {
-		return time.Time{}, false, fmt.Errorf("reading last manual sync: %w", err)
+	if err := s.pool.QueryRow(ctx, `SELECT max(started_at) FROM sync_runs WHERE trigger = $1`, trigger).Scan(&t); err != nil {
+		return time.Time{}, false, fmt.Errorf("reading last %s sync: %w", trigger, err)
 	}
 	if t == nil {
 		return time.Time{}, false, nil
@@ -347,6 +349,19 @@ func (s *Store) LastRun(ctx context.Context) (*Run, error) {
 // LastSuccess returns when the last successful sync finished.
 func (s *Store) LastSuccess(ctx context.Context) (time.Time, bool, error) {
 	return s.lastSuccess(ctx)
+}
+
+// LastSuccessStart returns when the last successful sync started, if any:
+// the stored copy holds every change Linear had made before that moment.
+func (s *Store) LastSuccessStart(ctx context.Context) (time.Time, bool, error) {
+	var t *time.Time
+	if err := s.pool.QueryRow(ctx, `SELECT max(started_at) FROM sync_runs WHERE status = 'succeeded'`).Scan(&t); err != nil {
+		return time.Time{}, false, fmt.Errorf("reading last successful sync start: %w", err)
+	}
+	if t == nil {
+		return time.Time{}, false, nil
+	}
+	return *t, true, nil
 }
 
 func (s *Store) lastSuccess(ctx context.Context) (time.Time, bool, error) {

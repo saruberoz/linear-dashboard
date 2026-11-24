@@ -237,8 +237,12 @@ func (h *Dashboard) ListProjectsWithoutTasks(_ context.Context, req *pb.ListProj
 
 // StartSync replies 409 or 429 before any work starts; otherwise the sync runs
 // in the background and the reply reports it as running.
-func (h *Dashboard) StartSync(ctx context.Context, _ *pb.StartSyncRequest) (*pb.StartSyncResponse, error) {
-	if _, err := h.runner.Start(ctx, h.base, snapshot.TriggerManual); err != nil {
+func (h *Dashboard) StartSync(ctx context.Context, req *pb.StartSyncRequest) (*pb.StartSyncResponse, error) {
+	trigger := snapshot.TriggerManual
+	if req.ChangedOnly {
+		trigger = snapshot.TriggerRefresh
+	}
+	if _, err := h.runner.Start(ctx, h.base, trigger); err != nil {
 		switch {
 		case errors.Is(err, snapshot.ErrRunning):
 			return nil, kerrors.Conflict(ReasonSyncRunning, "a sync is already running")

@@ -32,12 +32,13 @@ import (
 
 // Config is read from the environment.
 type Config struct {
-	LinearAPIKey string
-	DatabaseURL  string
-	HTTPAddr     string
-	SyncCron     string // one or more cron specs separated by ";"
-	TimeZone     *time.Location
-	SyncCooldown time.Duration
+	LinearAPIKey    string
+	DatabaseURL     string
+	HTTPAddr        string
+	SyncCron        string // one or more cron specs separated by ";"
+	TimeZone        *time.Location
+	SyncCooldown    time.Duration // between two full manual syncs (Resync)
+	RefreshCooldown time.Duration // between two changed-only syncs (Refresh)
 }
 
 // ConfigFromEnv reads and checks the configuration.
@@ -62,6 +63,10 @@ func ConfigFromEnv() (Config, error) {
 	cfg.SyncCooldown, err = time.ParseDuration(envOr("SYNC_COOLDOWN", "15m"))
 	if err != nil {
 		return Config{}, fmt.Errorf("parsing SYNC_COOLDOWN: %w", err)
+	}
+	cfg.RefreshCooldown, err = time.ParseDuration(envOr("REFRESH_COOLDOWN", "2m"))
+	if err != nil {
+		return Config{}, fmt.Errorf("parsing REFRESH_COOLDOWN: %w", err)
 	}
 	return cfg, nil
 }
@@ -107,7 +112,10 @@ func Run(ctx context.Context, cfg Config, logger *slog.Logger) error {
 		logger.Warn("marked abandoned syncs as failed", "count", n)
 	}
 
-	runner := snapshot.NewRunner(linear.New(cfg.LinearAPIKey), st, cfg.SyncCooldown, logger)
+	runner := snapshot.NewRunner(linear.New(cfg.LinearAPIKey), st, map[string]time.Duration{
+		snapshot.TriggerManual:  cfg.SyncCooldown,
+		snapshot.TriggerRefresh: cfg.RefreshCooldown,
+	}, logger)
 	ds, err := st.Load(base)
 	if err != nil {
 		return err

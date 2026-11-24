@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"linear-dashboard/backend/internal/report"
 )
 
@@ -16,7 +18,7 @@ type Workspace struct {
 	Initiatives []report.Initiative
 	Projects    []report.Project
 	Tasks       []report.Task
-	Trashed     int // deleted tasks skipped at fetch time
+	TrashedIDs  []string // deleted tasks skipped at fetch time
 }
 
 const (
@@ -30,13 +32,15 @@ const (
   pageInfo { hasNextPage endCursor } nodes { id name parent { name } } } }`
 	initiativesQuery = `query($after: String) { initiatives(first: 50, after: $after, includeArchived: true) {
   pageInfo { hasNextPage endCursor } nodes { id name status url createdAt targetDate } } }`
-	projectsQuery = `query($after: String) { projects(first: 50, after: $after, includeArchived: true) {
+	projectsQuery = `query($after: String) { projects(first: 250, after: $after, includeArchived: true) {
   pageInfo { hasNextPage endCursor }
   nodes { id name state url createdAt startDate targetDate labels(first: 20) { nodes { id } } initiatives(first: 20) { nodes { id } } teams(first: 20) { nodes { id } } } } }`
-	issuesQuery = `query($after: String) { issues(first: 100, after: $after, includeArchived: true) {
-  pageInfo { hasNextPage endCursor }
+	issueFields = `pageInfo { hasNextPage endCursor }
   nodes { id identifier title url estimate priority createdAt startedAt completedAt canceledAt archivedAt startedTriageAt triagedAt trashed
     team { id } state { name type } assignee { id } project { id } parent { id } labels(first: 20) { nodes { id } } } } }`
+	issuesQuery        = `query($after: String) { issues(first: 100, after: $after, includeArchived: true) {` + issueFields
+	changedIssuesQuery = `query($after: String, $since: DateTimeOrDuration) {
+  issues(first: 100, after: $after, includeArchived: true, filter: { updatedAt: { gt: $since } }) {` + issueFields
 )
 
 type idRef struct {
@@ -79,11 +83,15 @@ type issueNode struct {
 	} `json:"labels"`
 }
 
-// FetchWorkspace downloads the whole workspace: archived items included, deleted
-// (trashed) tasks excluded, disabled users included. progress, when set, is
-// called after every page with the number of records it held.
-func (c *Client) FetchWorkspace(ctx context.Context, progress func(int)) (*Workspace, error) {
+// FetchWorkspace downloads the workspace: archived items included, deleted
+// (trashed) tasks excluded, disabled users included. With a zero since it
+// fetches every task; otherwise only tasks updated in Linear after since, while
+// teams, users, labels, initiatives and projects are always fetched in full.
+// The lists are fetched concurrently. progress, when set, is called after every
+// page with the number of records it held, and must be safe for concurrent use.
+func (c *Client) FetchWorkspace(ctx context.Context, since time.Time, progress func(int)) (*Workspace, error) {
 	ws := &Workspace{}
+	g, ctx := errgroup.WithContext(ctx)
 	steps := []struct {
 		name string
 		run  func() error
@@ -141,10 +149,14 @@ func (c *Client) FetchWorkspace(ctx context.Context, progress func(int)) (*Works
 			})
 		}},
 		{"tasks", func() error {
-			return paginate(ctx, c, issuesQuery, progress, func(ns []issueNode) {
+			query, vars := issuesQuery, map[string]any(nil)
+			if !since.IsZero() {
+				query, vars = changedIssuesQuery, map[string]any{"since": since.UTC().Format(time.RFC3339)}
+			}
+			return paginateVars(ctx, c, query, vars, progress, func(ns []issueNode) {
 				for _, n := range ns {
 					if n.Trashed != nil && *n.Trashed {
-						ws.Trashed++
+						ws.TrashedIDs = append(ws.TrashedIDs, n.ID)
 						continue
 					}
 					ws.Tasks = append(ws.Tasks, toTask(n))
@@ -153,9 +165,15 @@ func (c *Client) FetchWorkspace(ctx context.Context, progress func(int)) (*Works
 		}},
 	}
 	for _, s := range steps {
-		if err := s.run(); err != nil {
-			return nil, fmt.Errorf("fetching %s: %w", s.name, err)
-		}
+		g.Go(func() error {
+			if err := s.run(); err != nil {
+				return fmt.Errorf("fetching %s: %w", s.name, err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return ws, nil
 }
