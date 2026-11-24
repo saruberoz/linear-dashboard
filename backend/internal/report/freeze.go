@@ -68,9 +68,10 @@ func ParseEstimate(s string) (*float64, error) {
 //   - a completed project: which tasks are in it, and the estimates of its tasks;
 //   - a completed visible initiative: which projects are linked to it.
 //
-// Completion is read from prev, so work completed in this sync is frozen from
-// the next one. Ignored tasks are never frozen. With no prev (the first sync)
-// nothing is frozen.
+// A first estimate on a task that had none is not held: it fills a gap
+// rather than changing what was agreed. Completion is read from prev, so work
+// completed in this sync is frozen from the next one. Ignored tasks are never
+// frozen. With no prev (the first sync) nothing is frozen.
 func Freeze(prev *Dataset, tasks []Task, projects []Project) []FrozenChange {
 	if prev == nil {
 		return nil
@@ -102,7 +103,7 @@ func Freeze(prev *Dataset, tasks []Task, projects []Project) []FrozenChange {
 				t.ProjectID = oldProject
 			}
 		}
-		if p != nil && FormatEstimate(p.Estimate) != FormatEstimate(t.Estimate) {
+		if p != nil && p.Estimate != nil && FormatEstimate(p.Estimate) != FormatEstimate(t.Estimate) {
 			by := ""
 			if p.StateType == "completed" {
 				by = "task"

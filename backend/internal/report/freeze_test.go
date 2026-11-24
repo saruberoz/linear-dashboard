@@ -96,6 +96,39 @@ func TestFreezeWithoutChangesOrPrevious(t *testing.T) {
 	}
 }
 
+func TestFreezeLetsAFirstEstimateThrough(t *testing.T) {
+	nov := at("2026-11-05 10:00")
+	prev := build(
+		[]Project{{ID: "done-proj", State: "completed", CreatedAt: nov}},
+		nil,
+		[]Task{
+			{ID: "done-unestimated", TeamID: "est", StateType: "completed", CreatedAt: nov},
+			{ID: "unestimated-in-done-proj", TeamID: "est", StateType: "started", ProjectID: "done-proj", CreatedAt: nov},
+			{ID: "done-estimated", TeamID: "est", StateType: "completed", Estimate: ptr(1.0), CreatedAt: nov},
+		},
+	)
+	tasks := []Task{
+		{ID: "done-unestimated", TeamID: "est", StateType: "completed", Estimate: ptr(7.0), CreatedAt: nov},
+		{ID: "unestimated-in-done-proj", TeamID: "est", StateType: "started", ProjectID: "done-proj", Estimate: ptr(2.0), CreatedAt: nov},
+		{ID: "done-estimated", TeamID: "est", StateType: "completed", CreatedAt: nov},
+	}
+	got := Freeze(prev, tasks, []Project{{ID: "done-proj", State: "completed"}})
+
+	want := []FrozenChange{{Kind: ChangeEstimate, TaskID: "done-estimated", Old: "1", New: "", FrozenBy: "task"}}
+	if !slices.Equal(got, want) {
+		t.Errorf("changes:\n got %+v\nwant %+v", got, want)
+	}
+	if e := tasks[0].Estimate; e == nil || *e != 7 {
+		t.Errorf("first estimate on a completed task = %v, want 7 kept", e)
+	}
+	if e := tasks[1].Estimate; e == nil || *e != 2 {
+		t.Errorf("first estimate in a completed project = %v, want 2 kept", e)
+	}
+	if e := tasks[2].Estimate; e == nil || *e != 1 {
+		t.Errorf("removed estimate = %v, want 1 restored", e)
+	}
+}
+
 func TestWithChangeAppliesAnApprovedChange(t *testing.T) {
 	prev := frozenPrev()
 	got, err := prev.WithChange(FrozenChange{Kind: ChangeEstimate, TaskID: "done-task", Old: "3", New: "5"})

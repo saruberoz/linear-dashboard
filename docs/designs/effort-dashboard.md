@@ -221,6 +221,9 @@ Where this section and the rest of the document disagree, this section wins.
     3.  projects linked to or unlinked from a completed `[W]`/`[WS]`
         initiative (hidden initiatives do not count, so they are not frozen).
 
+    A first estimate on a task that had none is not held *(PAR-981)*: it fills
+    a gap that the Missing estimates page asks people to fill.
+
     Completion is read from the stored copy, so work completed in a sync is
     frozen from the next one. Each held change is a row in `frozen_changes`,
     listed on the **Pending changes** bookkeeping page. Anyone with the app can

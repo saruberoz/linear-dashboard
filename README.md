@@ -170,6 +170,9 @@ to frozen work and keeps counting the old value:
 | project | a task moved into or out of it, created in it, or re-estimated while in it |
 | `[W]`/`[WS]` initiative | a project linked to or unlinked from it |
 
+A first estimate on a task that had none goes through without approval.
+Estimates on unfinished tasks outside completed projects are never held.
+
 Held changes are listed under **Pending changes** in the left menu. Anyone
 with the app can decide them:
 
