@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { CheckIcon, Undo2Icon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -69,39 +70,83 @@ function Change({ c }: { c: T.FrozenChange }) {
   )
 }
 
-/** Pending changes to completed work, each with Approve and Reject. */
+type Action = "approve" | "reject"
+
+const ACTION_LABEL: Record<Action, [string, string]> = {
+  approve: ["Approving", "Approved"],
+  reject: ["Rejecting", "Rejected"],
+}
+
+const name = (c: T.FrozenChange) =>
+  c.itemIdentifier || c.itemTitle || "a change no longer in Linear"
+
+/**
+ * Pending changes to completed work. Each row has Approve and Reject, and
+ * selected rows can be decided together.
+ */
 export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
   const router = useRouter()
-  const [busy, setBusy] = React.useState<string>("")
+  const [busy, setBusy] = React.useState("")
   const [notice, setNotice] = React.useState("")
-  const [rejecting, setRejecting] = React.useState<T.FrozenChange | null>(null)
+  const [picked, setPicked] = React.useState<Set<string>>(new Set())
+  const [rejecting, setRejecting] = React.useState<T.FrozenChange[] | null>(
+    null
+  )
   const [reason, setReason] = React.useState("")
 
+  const selected = rows.filter((c) => picked.has(c.id))
+  const allPicked = rows.length > 0 && selected.length === rows.length
+
+  const toggle = (id: string, on: boolean) =>
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+
+  // The server decides one change at a time, so a batch goes in order.
   const decide = async (
-    c: T.FrozenChange,
-    action: "approve" | "reject",
+    changes: T.FrozenChange[],
+    action: Action,
     body: object = {}
   ) => {
-    setBusy(`${c.id}:${action}`)
+    const [doing, done] = ACTION_LABEL[action]
+    const failed: string[] = []
     setNotice("")
-    try {
-      await clientFetch(
-        `frozen-changes/${c.id}/${action}`,
-        {},
-        { method: "POST", body: JSON.stringify(body) }
+    for (const [i, c] of changes.entries()) {
+      setBusy(
+        changes.length > 1
+          ? `${doing} ${i + 1} of ${changes.length}`
+          : `${c.id}:${action}`
       )
-      setRejecting(null)
-      setReason("")
-    } catch (e) {
-      setNotice(
-        e instanceof BackendError
-          ? e.body.message
-          : "Could not reach the dashboard"
-      )
-    } finally {
-      setBusy("")
-      router.refresh()
+      try {
+        await clientFetch(
+          `frozen-changes/${c.id}/${action}`,
+          {},
+          { method: "POST", body: JSON.stringify(body) }
+        )
+        toggle(c.id, false)
+      } catch (e) {
+        failed.push(
+          `${name(c)}: ${
+            e instanceof BackendError
+              ? e.body.message
+              : "could not reach the dashboard"
+          }`
+        )
+      }
     }
+    if (failed.length)
+      setNotice(
+        (changes.length > 1
+          ? `${done} ${changes.length - failed.length} of ${changes.length}. `
+          : "") + failed.join("; ")
+      )
+    setRejecting(null)
+    setReason("")
+    setBusy("")
+    router.refresh()
   }
 
   if (!rows.length)
@@ -112,6 +157,8 @@ export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
       </p>
     )
 
+  const one = rejecting?.length === 1 ? rejecting[0] : null
+
   return (
     <>
       {notice && (
@@ -119,10 +166,61 @@ export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
           {notice}
         </p>
       )}
+      <div className="flex min-h-9 flex-wrap items-center gap-2 px-4 pb-3 text-sm">
+        <span className="text-muted-foreground tabular-nums">
+          {busy && !busy.includes(":")
+            ? `${busy}…`
+            : selected.length
+              ? `${selected.length} selected`
+              : "Select changes to decide them together"}
+        </span>
+        {selected.length > 0 && (
+          <span className="flex flex-wrap gap-1.5">
+            <Button
+              size="sm"
+              disabled={!!busy}
+              onClick={() => decide(selected, "approve")}
+            >
+              <CheckIcon data-icon="inline-start" />
+              Approve {selected.length}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!busy}
+              onClick={() => setRejecting(selected)}
+            >
+              <Undo2Icon data-icon="inline-start" />
+              Reject {selected.length}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={!!busy}
+              onClick={() => setPicked(new Set())}
+            >
+              Clear
+            </Button>
+          </span>
+        )}
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="pl-4">Task or project</TableHead>
+            <TableHead className="w-8 pl-4">
+              <Checkbox
+                aria-label="Select all changes"
+                checked={allPicked}
+                indeterminate={selected.length > 0 && !allPicked}
+                disabled={!!busy}
+                onCheckedChange={() =>
+                  setPicked(
+                    allPicked ? new Set() : new Set(rows.map((c) => c.id))
+                  )
+                }
+              />
+            </TableHead>
+            <TableHead>Task or project</TableHead>
             <TableHead>Change</TableHead>
             <TableHead>Frozen because</TableHead>
             <TableHead>Seen</TableHead>
@@ -131,8 +229,19 @@ export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
         </TableHeader>
         <TableBody>
           {rows.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell className="w-full max-w-0 pl-4">
+            <TableRow
+              key={c.id}
+              data-state={picked.has(c.id) ? "selected" : undefined}
+            >
+              <TableCell className="pl-4">
+                <Checkbox
+                  aria-label={`Select ${name(c)}`}
+                  checked={picked.has(c.id)}
+                  disabled={!!busy}
+                  onCheckedChange={(on) => toggle(c.id, on)}
+                />
+              </TableCell>
+              <TableCell className="w-full max-w-0">
                 <Item c={c} />
               </TableCell>
               <TableCell className="max-w-64 min-w-40 whitespace-normal">
@@ -150,7 +259,7 @@ export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
                     size="sm"
                     variant="outline"
                     disabled={!!busy}
-                    onClick={() => decide(c, "approve")}
+                    onClick={() => decide([c], "approve")}
                   >
                     {busy === `${c.id}:approve` ? (
                       <Spinner data-icon="inline-start" />
@@ -163,7 +272,7 @@ export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
                     size="sm"
                     variant="outline"
                     disabled={!!busy}
-                    onClick={() => setRejecting(c)}
+                    onClick={() => setRejecting([c])}
                   >
                     <Undo2Icon data-icon="inline-start" />
                     Reject
@@ -180,20 +289,31 @@ export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reject and undo in Linear?</DialogTitle>
+            <DialogTitle>
+              {one
+                ? "Reject and undo in Linear?"
+                : `Reject ${rejecting?.length} changes and undo them in Linear?`}
+            </DialogTitle>
             <DialogDescription>
-              {rejecting && (
+              {one ? (
                 <>
-                  {rejecting.what} of{" "}
-                  {rejecting.itemIdentifier || rejecting.itemTitle} goes back to{" "}
-                  {rejecting.oldValue} in Linear, and a comment there says why:{" "}
-                  {rejecting.frozenBy}, so it is frozen.
+                  {one.what} of {name(one)} goes back to {one.oldValue} in
+                  Linear, and a comment there says why: {one.frozenBy}, so it is
+                  frozen.
+                </>
+              ) : (
+                <>
+                  Each change goes back to its old value in Linear, and a
+                  comment on each says why it is frozen:{" "}
+                  {rejecting?.map(name).join(", ")}.
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
           <label className="flex flex-col gap-1.5 text-sm">
-            Reason (optional, added to the comment)
+            {one
+              ? "Reason (optional, added to the comment)"
+              : "Reason (optional, added to every comment)"}
             <Textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -215,8 +335,8 @@ export function PendingChanges({ rows }: { rows: T.FrozenChange[] }) {
                 rejecting && decide(rejecting, "reject", { reason })
               }
             >
-              {busy.endsWith(":reject") && <Spinner data-icon="inline-start" />}
-              Reject and undo
+              {busy && <Spinner data-icon="inline-start" />}
+              {busy && !busy.includes(":") ? `${busy}…` : "Reject and undo"}
             </Button>
           </DialogFooter>
         </DialogContent>
